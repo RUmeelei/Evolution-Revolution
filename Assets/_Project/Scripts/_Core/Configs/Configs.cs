@@ -7,12 +7,25 @@ namespace ER
         [CreateAssetMenu(fileName = "MainConfig", menuName = "Game/Configs/Main Config")]
         public class MainConfig : ScriptableObject
         {
+        }
+
+        [CreateAssetMenu(fileName = "SimulationConfig", menuName = "Game/Configs/Simulation Config")]
+        public class SimulationConfig : ScriptableObject
+        {
             [Header("Main Simulation Settings")]
             public int MaxSimulationSpeed;
             public int MaxTicksPerSecond;
 
-            public float SlowTickInterval;
-            public float EpicTickInterval;
+            public float SlowTickInterval; // In seconds
+            public float EpicTickInterval; // In seconds
+
+            [Header("Date Interpreter Settings")]
+            public int DateScaler; // 0 - Per tick | 1 - Per slow tick | 2 - Per epic tick
+
+            public float BaseAccumulation;
+
+            public int StepsPerCycle;
+            public int CyclesPerTier;
         }
 
         [CreateAssetMenu(fileName = "AIConfig", menuName = "Game/Configs/AI Config")]

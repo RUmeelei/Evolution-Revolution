@@ -12,8 +12,3 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 33b5a12f6bc7d0c4682fc97fa3753613, type: 3}
   m_Name: MainConfig
   m_EditorClassIdentifier: Assembly-CSharp::ER.Configs.MainConfig
-  IsAIEnabled: 1
-  MaxSimulationSpeed: 4
-  MaxTicksPerSecond: 10
-  SlowTickInterval: 1
-  EpicTickInterval: 5

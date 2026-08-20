@@ -10,13 +10,15 @@ namespace ER
 
         public class SimulationManager : MonoBehaviour
         {
+            public static SimulationManager Instance {get; private set;}
+
             [Header("Main")]
             public bool IsSimulationRunning = false;
             public int SimulationSpeed = 1;
 
             private int tick;
 
-            private MainConfig simulationConfig;
+            private SimulationConfig simulationConfig;
 
             public event Action<float> OnTick;
             public event Action<float> OnSlowTick;
@@ -28,12 +30,21 @@ namespace ER
 
             void Awake()
             {
+                if (Instance != null && Instance != this)
+                {
+                    Destroy(gameObject); return;
+                }
+
+                Instance = this;
+
+                DontDestroyOnLoad(gameObject);
+
                 CoreManager.RegisterSimulationManager(this);
             }
 
             void Start()
             {
-                simulationConfig = CoreManager.ConfigMain;
+                simulationConfig = CoreManager.SimulationConfig;
             }
 
             void Update()
@@ -84,7 +95,7 @@ namespace ER
 
                     SlowTickTimer = 0f;
 
-                    Debug.Log($"Slow Tick! {tick / simulationConfig.SlowTickInterval}");
+                    Debug.Log($"Slow Tick!");
                 }
             }
 
@@ -98,7 +109,7 @@ namespace ER
 
                     EpicTickTimer = 0f;
 
-                    Debug.Log($"Epic Tick! {tick / simulationConfig.EpicTickInterval}");
+                    Debug.Log($"Epic Tick!");
                 }
             }
         }
