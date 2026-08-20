@@ -81,8 +81,6 @@ namespace ER
                 OnTick?.Invoke(delta);
 
                 tick++;
-
-                Debug.Log($"Tick! {tick}");
             }
 
             public void ProcessSlowTick(float delta)
@@ -94,8 +92,6 @@ namespace ER
                     OnSlowTick?.Invoke(delta);
 
                     SlowTickTimer = 0f;
-
-                    Debug.Log($"Slow Tick!");
                 }
             }
 
@@ -108,9 +104,22 @@ namespace ER
                     OnEpicTick?.Invoke(delta);
 
                     EpicTickTimer = 0f;
-
-                    Debug.Log($"Epic Tick!");
                 }
+            }
+
+            public void Pause()
+            {
+                IsSimulationRunning = false;
+            }
+
+            public void Unpause()
+            {
+                IsSimulationRunning = true;
+            }
+
+            public void SetSimulationSpeed(int speed)
+            {
+                SimulationSpeed = Mathf.Min(simulationConfig.MaxSimulationSpeed, speed);
             }
         }
     }

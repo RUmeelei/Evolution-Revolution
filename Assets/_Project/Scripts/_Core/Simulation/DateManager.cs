@@ -12,14 +12,12 @@ namespace ER
             public static DateManager Instance {get; private set;}
 
             [Header("Main")]
-            public bool Gavno;
+            public int Step = 0;
+            public int Cycle = 0;
+            public int Tier = 0;
 
             private SimulationManager simulationManager;
             private SimulationConfig simulationConfig;
-
-            private int Step = 0;
-            private int Cycle = 0;
-            private int Tier = 0;
 
             private float stepAccumulator = 0f;
 
@@ -112,12 +110,6 @@ namespace ER
                     }
                 }
             }
-
-            public int GetStep() => Step;
-
-            public int GetCycle() => Cycle;
-
-            public int GetTier() => Tier;
         }
     }
 }
