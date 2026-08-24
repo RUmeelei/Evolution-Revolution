@@ -4,10 +4,6 @@ namespace ER
 {
     namespace Configs
     {
-        [CreateAssetMenu(fileName = "MainConfig", menuName = "Game/Configs/Main Config")]
-        public class MainConfig : ScriptableObject
-        {
-        }
 
         [CreateAssetMenu(fileName = "SimulationConfig", menuName = "Game/Configs/Simulation Config")]
         public class SimulationConfig : ScriptableObject
@@ -26,21 +22,6 @@ namespace ER
 
             public int StepsPerCycle;
             public int CyclesPerTier;
-        }
-
-        [CreateAssetMenu(fileName = "AIConfig", menuName = "Game/Configs/AI Config")]
-        public class AIConfig : ScriptableObject
-        {
-            [Header("Main AI Settings")]
-            public bool IsAIEnabled;
-        }
-
-        [CreateAssetMenu(fileName = "UIConfig", menuName = "Game/Configs/UI Config")]
-        public class UIConfig : ScriptableObject
-        {
-            [Header("Main UI Settings")]
-            public Color BaseButtonColor;
-            public Color HoverButtonColor;
         }
     }
 }

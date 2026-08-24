@@ -34,6 +34,11 @@ namespace ER
 
                 void Awake()
                 {
+                    if (transform.parent != null)
+                    {
+                        transform.SetParent(null);
+                    }
+                
                     if (Instance != null && Instance != this)
                     {
                         Destroy(gameObject); return;

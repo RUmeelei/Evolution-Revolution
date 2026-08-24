@@ -9,8 +9,8 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: b65db38d091eb764d86239e1232d8a2e, type: 3}
   m_Name: UIConfig
-  m_EditorClassIdentifier: Assembly-CSharp:ER.Configs:UIConfig
+  m_EditorClassIdentifier: Assembly-CSharp::ER.Configs.UIConfig
   BaseButtonColor: {r: 0.2901961, g: 0.5647059, b: 0.8509804, a: 1}
   HoverButtonColor: {r: 0.42352942, g: 0.7058824, b: 0.93333334, a: 1}

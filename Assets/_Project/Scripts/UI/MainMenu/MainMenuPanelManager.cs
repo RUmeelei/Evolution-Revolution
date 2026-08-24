@@ -21,8 +21,18 @@ namespace ER
                 [SerializeField] private Button SettingsButton;
                 [SerializeField] private Button ExitGameButton;
 
+                [Header("New Game")]
+                [SerializeField] private GameObject NewGamePanel;
+                [SerializeField] private Button StartNewGameButton;
+                [SerializeField] private Button CloseButton;
+
                 void Awake()
                 {
+                    if (transform.parent != null)
+                    {
+                        transform.SetParent(null);
+                    }
+                
                     if (Instance != null && Instance != this)
                     {
                         Destroy(gameObject); return;
@@ -41,21 +51,26 @@ namespace ER
                     if (LoadGameButton != null) LoadGameButton.onClick.AddListener(LoadGameButtonHandler);
                     if (SettingsButton != null) SettingsButton.onClick.AddListener(SettingsButtonHandler);
                     if (ExitGameButton != null) ExitGameButton.onClick.AddListener(ExitGameButtonHandler);
+                    if (StartNewGameButton != null) StartNewGameButton.onClick.AddListener(StartNewGamePanelButtonHandler);
+                    if (CloseButton != null) CloseButton.onClick.AddListener(CloseNewGamePanelButtonHandler);
                 }
 
                 private void NewGameButtonHandler()
                 {
-                    SceneManager.LoadScene("Game");
+                    if (NewGamePanel != null)
+                    {
+                        NewGamePanel.gameObject.SetActive(true);
+                    }
                 }
 
                 private void LoadGameButtonHandler()
                 {
-                    
+                    CloseNewGamePanelButtonHandler();
                 }
 
                 private void SettingsButtonHandler()
                 {
-                    
+                    CloseNewGamePanelButtonHandler();
                 }
 
                 private void ExitGameButtonHandler()
@@ -65,6 +80,19 @@ namespace ER
                     #if UNITY_EDITOR
                         UnityEditor.EditorApplication.isPlaying = false;
                     #endif
+                }
+
+                private void StartNewGamePanelButtonHandler()
+                {
+                    SceneManager.LoadScene("Game");
+                }
+
+                private void CloseNewGamePanelButtonHandler()
+                {
+                    if (NewGamePanel != null)
+                    {
+                        NewGamePanel.gameObject.SetActive(false);
+                    }
                 }
             }
         }
