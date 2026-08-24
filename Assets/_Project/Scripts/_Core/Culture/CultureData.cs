@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 namespace ER
 {
@@ -17,17 +18,15 @@ namespace ER
 
             public Color CultureColor;
 
-            public CultureTrait[] CultureTraits;
+            public Dictionary<string, CultureTrait> CultureTraits;
         }
 
         public class CultureTrait
         {
-            public int CultureTraitId;
+            public string CultureTraitId;
 
             public string CultureTraitName;
             public string CultureTraitDescription;
-
-            public float CultureTraitInfluence;
         }
     }
 }
