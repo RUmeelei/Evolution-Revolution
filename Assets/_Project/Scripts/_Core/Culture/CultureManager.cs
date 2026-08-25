@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using UnityEngine;
 using System.Collections.Generic;
@@ -8,6 +7,7 @@ namespace ER
     namespace Culture
     {
         using Core;
+        using Simulation;
 
         public class CultureManager : MonoBehaviour
         {
@@ -23,6 +23,8 @@ namespace ER
 
             public List<CultureTrait> CultureTraits = new List<CultureTrait>();
             private Dictionary<string, CultureTrait> CultureTraitsDictionary = new Dictionary<string, CultureTrait>();
+
+            private SimulationManager simulationManager;
 
             void Awake()
             {
@@ -45,20 +47,24 @@ namespace ER
 
             void Start()
             {
+                simulationManager = CoreManager.SimulationManager;
+
+                simulationManager.OnTick += ProcessCultureTick;
+
                 CreateCultureTrait("NomadicNation", "Nomadic Nation", "Nomads");
                 CreateCultureTrait("WarriorNation", "Warrior Nation", "Warriors");
                 CreateCultureTrait("MerchantNation", "Merchant Nation", "Merchants");
                 CreateCultureTrait("ReligiousNation", "Religious Nation", "Religious");
                 CreateCultureTrait("BarbarianNation", "Barbarian Nation", "Barbarians");
 
-                CreateCulture(cultureColor : new Color(50, 50, 50));
+                CreateCulture(cultureColor : new Color(50, 50, 50), cultureDescription : "A strong man united nomadic tribes and created a unique culture. This culture has basic traits like ``Nomads`` and ``Warriors``.");
 
                 AddCultureTrait("NomadicNation", "CUL_0001");
                 AddCultureTrait("WarriorNation", "CUL_0001");
                 AddCultureTrait("BarbarianNation", "CUL_0001");
             }
 
-            public CultureData CreateCulture(Color cultureColor, string cultureId = "CUL", string cultureName = "Nomads", string cultureDescription = "A strong man united nomadic tribes and created a unique culture. This culture has basic traits like ``Nomads`` and ``Warriors``.")
+            public CultureData CreateCulture(Color cultureColor, string cultureId = "CUL", string cultureName = "Nomads", string cultureDescription = "A strong man united nomadic tribes and created a unique culture.")
             {
                 int numericId = NextCultureId++;
 
@@ -134,11 +140,58 @@ namespace ER
                 return culture;
             }
 
+            public IEnumerable<CultureTrait> GetCultureTraits(string id)
+            {
+                CultureData culture = GetCulture(id);
+
+                if (culture == null) yield break;
+
+                foreach (var trait in culture.CultureTraits.Values)
+                {
+                    yield return trait;
+                }
+            }
+
             public CultureTrait GetCultureTrait(string id)
             {
                 CultureTraitsDictionary.TryGetValue(id, out var cultureTrait);
 
                 return cultureTrait;
+            }
+
+            public void SetCultureIdentity(string id, float amount)
+            {
+                CultureData _culture = GetCulture(id);
+
+                if (_culture == null) return;
+
+                _culture.CultureIdentity = Mathf.Clamp(amount, 0f, 100f);
+            }
+
+            public void ChangeCultureIdentity(string id, float amount)
+            {
+                CultureData _culture = GetCulture(id);
+
+                if (_culture == null) return;
+
+                _culture.CultureIdentity = Mathf.Clamp(_culture.CultureIdentity + amount, 0f, 100f);
+            }
+
+            public void ProcessCultureTick(float delta)
+            {
+                float _change = Random.Range(-10f, 10f);
+
+                foreach (var culture in Cultures)
+                {
+                    if (culture.CultureDefeated) continue;
+                    
+                    if (culture.CultureTraits.ContainsKey("BarbarianNation"))
+                    {
+                        _change -= Random.Range(1f, 10f);
+                    }
+
+                    ChangeCultureIdentity(culture.CultureId, _change * delta);
+                }
             }
         }
     }

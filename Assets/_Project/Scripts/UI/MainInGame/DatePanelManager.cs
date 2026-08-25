@@ -70,17 +70,17 @@ namespace ER
                 {
                     if (StepValue != null)
                     {
-                        StepValue.SetText($"{dateManager.Step}");
+                        StepValue.SetText($"{dateManager.Step:D2}");
                     }
 
                     if (CycleValue != null)
                     {
-                        CycleValue.SetText($"{dateManager.Cycle}");
+                        CycleValue.SetText($"{dateManager.Cycle:D2}");
                     }
 
                     if (TierValue != null)
                     {
-                        TierValue.SetText($"{dateManager.Tier}");
+                        TierValue.SetText($"{dateManager.Tier:D2}");
                     }
 
                     if (PauseButton != null)

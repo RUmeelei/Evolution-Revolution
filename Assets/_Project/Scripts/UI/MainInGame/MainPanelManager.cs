@@ -66,7 +66,7 @@ namespace ER
 
                     if (CultureIdentityText != null)
                     {
-                        CultureIdentityText.SetText($"Identity : {cultureManager.GetCulture("CUL_0001").CultureIdentity}%");
+                        CultureIdentityText.SetText($"Identity : {Mathf.Round(cultureManager.GetCulture("CUL_0001").CultureIdentity)}%");
                     }
                     
                     if (CultureDescriptionText != null)
