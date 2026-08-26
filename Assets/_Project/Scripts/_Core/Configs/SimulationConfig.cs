@@ -5,7 +5,7 @@ namespace ER
     namespace Configs
     {
 
-        [CreateAssetMenu(fileName = "SimulationConfig", menuName = "Game/Configs/Simulation Config")]
+        [CreateAssetMenu(fileName = "SimulationConfig", menuName = "ER/Configs/Simulation Config")]
         public class SimulationConfig : ScriptableObject
         {
             [Header("Main Simulation Settings")]

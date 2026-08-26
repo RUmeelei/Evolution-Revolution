@@ -4,9 +4,12 @@ namespace ER
 {
     namespace Configs
     {
-        [CreateAssetMenu(fileName = "MainConfig", menuName = "Game/Configs/Main Config")]
+        [CreateAssetMenu(fileName = "MainConfig", menuName = "ER/Configs/Main Config")]
         public class MainConfig : ScriptableObject
         {
+            [Header("Thresholds for UI Settings")]
+            public float WarningIdentityThreshold;
+            public float ErrorIdentityThreshold;
         }
     }
 }

@@ -80,7 +80,7 @@ namespace ER
 
                     if (TierValue != null)
                     {
-                        TierValue.SetText($"{dateManager.Tier:D2}");
+                        TierValue.SetText($"{dateManager.Tier}");
                     }
 
                     if (PauseButton != null)

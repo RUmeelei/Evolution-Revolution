@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using UnityEngine;
 using System.Collections.Generic;
@@ -14,17 +15,19 @@ namespace ER
             public static CultureManager Instance {get; private set;}
 
             [Header("Main")]
-            public bool Govno;
+            public bool EnableLogging;
 
             private int NextCultureId = 1;
 
             public List<CultureData> Cultures = new List<CultureData>();
             private Dictionary<string, CultureData> CulturesDictionary = new Dictionary<string, CultureData>();
 
-            public List<CultureTrait> CultureTraits = new List<CultureTrait>();
-            private Dictionary<string, CultureTrait> CultureTraitsDictionary = new Dictionary<string, CultureTrait>();
+            public List<CultureTrait> CultureTraitTemplates = new List<CultureTrait>();
+            private Dictionary<string, CultureTrait> CultureTraitTemplatesDictionary = new Dictionary<string, CultureTrait>();
 
             private SimulationManager simulationManager;
+
+            public event Action<float> OnCultureTick;
 
             void Awake()
             {
@@ -49,148 +52,230 @@ namespace ER
             {
                 simulationManager = CoreManager.SimulationManager;
 
-                simulationManager.OnTick += ProcessCultureTick;
+                simulationManager.OnSlowTick += ProcessCultureTick;
 
-                CreateCultureTrait("NomadicNation", "Nomadic Nation", "Nomads");
-                CreateCultureTrait("WarriorNation", "Warrior Nation", "Warriors");
-                CreateCultureTrait("MerchantNation", "Merchant Nation", "Merchants");
-                CreateCultureTrait("ReligiousNation", "Religious Nation", "Religious");
-                CreateCultureTrait("BarbarianNation", "Barbarian Nation", "Barbarians");
+                var startCulture = CreateCulture(
+                    cultureColor: new Color(50f / 255f, 50f / 255f, 50f / 255f),
+                    cultureName: "Rosskans",
+                    cultureDescription: "A strong man united nomadic tribes and created a unique culture."
+                );
 
-                CreateCulture(cultureColor : new Color(50, 50, 50), cultureDescription : "A strong man united nomadic tribes and created a unique culture. This culture has basic traits like ``Nomads`` and ``Warriors``.");
-
-                AddCultureTrait("NomadicNation", "CUL_0001");
-                AddCultureTrait("WarriorNation", "CUL_0001");
-                AddCultureTrait("BarbarianNation", "CUL_0001");
+                startCulture.AddTrait("NomadicNation");
+                startCulture.AddTrait("BarbarianNation");
             }
 
-            public CultureData CreateCulture(Color cultureColor, string cultureId = "CUL", string cultureName = "Nomads", string cultureDescription = "A strong man united nomadic tribes and created a unique culture.")
+            void OnDestroy()
+            {
+                if (simulationManager != null) simulationManager.OnSlowTick -= ProcessCultureTick;
+            }
+
+            public CultureData CreateCulture(Color cultureColor, string cultureName = "Nomads", string cultureDescription = "A strong man united nomadic tribes and created a unique culture.")
             {
                 int numericId = NextCultureId++;
+                string cultureId = $"CUL_{numericId:D4}";
 
                 CultureData culture = new CultureData()
                 {
                     CultureNumericId = numericId,
-                    CultureId = $"{cultureId}_{numericId:D4}",
+                    CultureId = cultureId,
 
                     CultureName = cultureName,
-                    CultureDescription =cultureDescription,
+                    CultureDescription = cultureDescription,
 
                     CultureIdentity = 100f,
                     CultureDefeated = false,
 
                     CultureColor = cultureColor,
-
-                    CultureTraits = new Dictionary<string, CultureTrait>(),
                 };
 
                 Cultures.Add(culture);
-                CulturesDictionary[culture.CultureId] = culture;
 
-                NextCultureId = Cultures.Max(c => c.CultureNumericId) + 1;
+                CulturesDictionary[cultureId] = culture;
 
-                Debug.Log($"Created {culture.CultureName} culture with id {culture.CultureId}.");
+                NextCultureId = Cultures.Count > 0 ? Cultures.Max(c => c.CultureNumericId) + 1 : 1;
+
+                Debug.Log($"Created {culture.CultureName} culture with id {culture.CultureId}");
 
                 return culture;
-            }
-
-            public CultureTrait CreateCultureTrait(string cultureTraitId, string cultureTraitName, string cultureTraitDescription)
-            {
-                CultureTrait cultureTrait = new CultureTrait()
-                {
-                    CultureTraitId = cultureTraitId,
-
-                    CultureTraitName = cultureTraitName,
-                    CultureTraitDescription = cultureTraitDescription,
-                };
-
-                CultureTraits.Add(cultureTrait);
-                CultureTraitsDictionary[cultureTrait.CultureTraitId] = cultureTrait;
-
-                Debug.Log($"Created {cultureTrait.CultureTraitName} culture trait with id {cultureTrait.CultureTraitId}.");
-
-                return cultureTrait;
-            }
-
-            public void AddCultureTrait(string cultureTraitId, string cultureId)
-            {
-                CultureTrait _cultureTrait = GetCultureTrait(cultureTraitId);
-
-                CultureData _culture = GetCulture(cultureId);
-
-                if (_cultureTrait == null || _culture == null) return;
-
-                if (!_culture.CultureTraits.ContainsKey(cultureTraitId)) 
-                {
-                    _culture.CultureTraits.Add(cultureTraitId, _cultureTrait);
-
-                    Debug.Log($"Added {_cultureTrait.CultureTraitName} trait to {_culture.CultureName} culture.");
-                }
-            }
-
-            private void GenerateRandomCulture()
-            {
-                
             }
 
             public CultureData GetCulture(string id)
             {
                 CulturesDictionary.TryGetValue(id, out var culture);
-
+                
                 return culture;
             }
 
-            public IEnumerable<CultureTrait> GetCultureTraits(string id)
+            public CultureData GetCultureByName(string name)
             {
-                CultureData culture = GetCulture(id);
+                return Cultures.FirstOrDefault(c => c.CultureName == name);
+            }
 
-                if (culture == null) yield break;
+            public List<CultureData> GetActiveCultures()
+            {
+                return Cultures.Where(c => !c.CultureDefeated).ToList();
+            }
 
-                foreach (var trait in culture.CultureTraits.Values)
+            public void DefeatCulture(string id)
+            {
+                var culture = GetCulture(id);
+
+                if (culture == null || culture.CultureDefeated) return;
+
+                culture.CultureDefeated = true;
+
+                Debug.Log($"{culture.CultureName} has been defeated");
+            }
+
+            public CultureTrait CreateTraitTemplate(string traitId, string traitName, string traitDescription)
+            {
+                if (CultureTraitTemplatesDictionary.ContainsKey(traitId))
                 {
-                    yield return trait;
+                    Debug.LogWarning($"Trait {traitId} already exists");
+
+                    return CultureTraitTemplatesDictionary[traitId];
+                }
+
+                var trait = ScriptableObject.CreateInstance<CultureTrait>();
+
+                trait.TraitId = traitId;
+
+                trait.TraitName = traitName;
+                trait.Description = traitDescription;
+
+                CultureTraitTemplates.Add(trait);
+                CultureTraitTemplatesDictionary[traitId] = trait;
+
+                Debug.Log($"Created trait template: {traitName}");
+
+                return trait;
+            }
+
+            public CultureTrait GetTraitTemplate(string id)
+            {
+                CultureTraitTemplatesDictionary.TryGetValue(id, out var trait);
+
+                return trait;
+            }
+            
+            public void AddCultureTrait(string traitId, string cultureId, float initialInfluence = 0f)
+            {
+                var template = GetTraitTemplate(traitId);
+
+                var culture = GetCulture(cultureId);
+
+                if (template == null)
+                {
+                    Debug.LogError($"Trait template {traitId} not found");
+
+                    return;
+                }
+
+                if (culture == null)
+                {
+                    Debug.LogError($"Culture {cultureId} not found");
+
+                    return;
+                }
+
+                if (!culture.Traits.ContainsKey(traitId))
+                {
+                    culture.Traits.Add(traitId, new CultureTraitData(true, initialInfluence));
+
+                    Debug.Log($"Added {template.TraitName} to {culture.CultureName}");
+                }
+                else
+                {
+                    Debug.LogWarning($"{culture.CultureName} already has {template.TraitName}");
                 }
             }
 
-            public CultureTrait GetCultureTrait(string id)
+            public void RemoveCultureTrait(string traitId, string cultureId)
             {
-                CultureTraitsDictionary.TryGetValue(id, out var cultureTrait);
+                var culture = GetCulture(cultureId);
 
-                return cultureTrait;
+                if (culture != null && culture.Traits.Remove(traitId))
+                {
+                    Debug.Log($"Removed trait {traitId} from {culture.CultureName}");
+                }
             }
 
-            public void SetCultureIdentity(string id, float amount)
+            public CultureTraitData GetTraitData(string cultureId, string traitId)
             {
-                CultureData _culture = GetCulture(id);
+                var culture = GetCulture(cultureId);
 
-                if (_culture == null) return;
+                if (culture == null) return null;
 
-                _culture.CultureIdentity = Mathf.Clamp(amount, 0f, 100f);
+                culture.Traits.TryGetValue(traitId, out var data);
+
+                return data;
             }
 
             public void ChangeCultureIdentity(string id, float amount)
             {
-                CultureData _culture = GetCulture(id);
+                var culture = GetCulture(id);
 
-                if (_culture == null) return;
+                if (culture == null || culture.CultureDefeated) return;
 
-                _culture.CultureIdentity = Mathf.Clamp(_culture.CultureIdentity + amount, 0f, 100f);
+                float oldIdentity = culture.CultureIdentity;
+
+                culture.CultureIdentity = Mathf.Clamp(culture.CultureIdentity + amount, 0f, 100f);
+
+                if (EnableLogging && Mathf.Abs(culture.CultureIdentity - oldIdentity) > 0.5f)
+                {
+                    float change = culture.CultureIdentity - oldIdentity;
+
+                    Debug.Log($"{culture.CultureName}: {(change > 0 ? "+" : "")}{change:F1}% identity (now {culture.CultureIdentity:F1}%)");
+                }
+
+                if (culture.CultureIdentity <= 0f) DefeatCulture(id);
             }
 
             public void ProcessCultureTick(float delta)
             {
-                float _change = Random.Range(-10f, 10f);
+                OnCultureTick?.Invoke(delta);
 
                 foreach (var culture in Cultures)
                 {
                     if (culture.CultureDefeated) continue;
-                    
-                    if (culture.CultureTraits.ContainsKey("BarbarianNation"))
-                    {
-                        _change -= Random.Range(1f, 10f);
-                    }
 
-                    ChangeCultureIdentity(culture.CultureId, _change * delta);
+                    float change = UnityEngine.Random.Range(-10f, 10f);
+
+                    float negativeInfluence = 0f;
+                    
+                    foreach (var traitEntry in culture.Traits)
+                    {
+                        string traitId = traitEntry.Key;
+
+                        CultureTraitData traitData = traitEntry.Value;
+
+                        if (!traitData.IsActive) continue;
+
+                        float traitChange = UnityEngine.Random.Range(-0.2f, 0.2f);
+
+                        if (traitEntry.Key == "BarbarianNation")
+                        {
+                            traitChange += UnityEngine.Random.Range(-0.5f, 3f);
+                        }
+                        
+                        if (traitEntry.Key == "NomadicNation")
+                        {
+                            traitChange += UnityEngine.Random.Range(-0.5f, 3f);
+                        }
+                        
+                        traitData.UpdateInfluence(delta, traitChange);
+                        
+                        if (traitData.HasSignificantInfluence(20f))
+                        {
+                            float penalty = UnityEngine.Random.Range(traitData.Influence * 0.01f, traitData.Influence * 0.1f);
+
+                            negativeInfluence += penalty;
+                        }
+                    }
+                    
+                    change -= negativeInfluence;
+
+                    ChangeCultureIdentity(culture.CultureId, change * delta);
                 }
             }
         }
