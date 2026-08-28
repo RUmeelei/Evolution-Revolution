@@ -11,6 +11,7 @@ namespace ER
             using Core;
             using Culture;
             using Configs;
+            using Players;
 
             public class MainPanelManager : MonoBehaviour
             {
@@ -23,6 +24,7 @@ namespace ER
                 [SerializeField] private TextMeshProUGUI CultureDescriptionText;
                 
                 private CultureManager cultureManager;
+                private PlayerManager playerManager;
 
                 private MainConfig mainConfig;
                 private UIConfig uiConfig;
@@ -48,10 +50,13 @@ namespace ER
 
                 void Start()
                 {
+                    mainConfig = CoreManager.MainConfig;
+                    
+                    uiConfig = CoreManager.UIConfig;
+
                     cultureManager = CoreManager.CultureManager;
 
-                    mainConfig = CoreManager.MainConfig;
-                    uiConfig = CoreManager.UIConfig;
+                    playerManager = CoreManager.PlayerManager;
 
                     // cultureManager.OnCultureTick += UpdateUI;
                 }
@@ -70,11 +75,13 @@ namespace ER
                 {
                     var culture = cultureManager.GetCulture("CUL_0001");
 
+                    var player = playerManager.GetPlayer("PLAYER_0001");
+
                     if (CultureNameText != null)
                     {
                         Color color = culture.CultureDefeated ? uiConfig.ErrorColor : uiConfig.MainTextColor;
 
-                        string text = culture.CultureDefeated ? "Defeated nation" : culture.CultureName;
+                        string text = culture.CultureDefeated ? "Defeated nation" : $"{culture.CultureName} | Food : {player.GetFood():F0}";
 
                         CultureNameText.SetText($"{text}");
                         
@@ -88,7 +95,7 @@ namespace ER
 
                     if (CultureIdentityText != null)
                     {
-                        Color color = uiConfig.MainTextColor;
+                        Color color = uiConfig.SecondTextColor;
 
                         float identity = culture.CultureIdentity;
 

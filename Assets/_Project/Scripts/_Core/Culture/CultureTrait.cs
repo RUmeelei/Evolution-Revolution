@@ -12,7 +12,7 @@ namespace ER
             public string Description;
     
             [Header("Settings")]
-            public float DefaultInfluence = 0f;
+            public float DefaultInfluence;
     
             [Header("Visual")]
             public Color TraitColor = Color.white;

@@ -10,6 +10,8 @@ namespace ER
         using Configs;
         using Simulation;
         using Culture;
+        using Resources;
+        using Players;
 
         public class CoreManager : MonoBehaviour
         {
@@ -28,6 +30,8 @@ namespace ER
             public static SimulationManager SimulationManager {get; private set;}
             public static DateManager DateManager {get; private set;}
             public static CultureManager CultureManager {get; private set;}
+            public static ResourceManager ResourceManager {get; private set;}
+            public static PlayerManager PlayerManager {get; private set;}
             public static DatePanelManager DatePanelManager {get; private set;}
             public static MainPanelManager MainPanelManager {get; private set;}
             public static MainMenuPanelManager MainMenuPanelManager {get; private set;}
@@ -35,6 +39,8 @@ namespace ER
             public static void RegisterSimulationManager(SimulationManager manager) => SimulationManager = manager;
             public static void RegisterDateManager(DateManager manager) => DateManager = manager;
             public static void RegisterCultureManager(CultureManager manager) => CultureManager = manager;
+            public static void RegisterResourceManager(ResourceManager manager) => ResourceManager = manager;
+            public static void RegisterPlayerManager(PlayerManager manager) => PlayerManager = manager;
             public static void RegisterDatePanelManager(DatePanelManager manager) => DatePanelManager = manager;
             public static void RegisterMainPanelManager(MainPanelManager manager) => MainPanelManager = manager;
             public static void RegisterMainMenuPanelManager(MainMenuPanelManager manager) => MainMenuPanelManager = manager;
@@ -54,6 +60,13 @@ namespace ER
                 Instance = this;
 
                 DontDestroyOnLoad(gameObject);
+            }
+
+            void Start()
+            {
+                CultureManager.Initialize();
+
+                PlayerManager.Initialize();
             }
         }
     }

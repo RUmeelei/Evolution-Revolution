@@ -19,41 +19,41 @@ namespace ER
 
             public Color CultureColor;
 
-            public Dictionary<string, CultureTraitData> Traits = new Dictionary<string, CultureTraitData>();
+            public Dictionary<string, CultureTraitData> CultureTraits = new Dictionary<string, CultureTraitData>();
 
             public bool HasTrait(string traitId)
             {
-                return Traits.ContainsKey(traitId);
+                return CultureTraits.ContainsKey(traitId);
             }
 
             public bool IsTraitActive(string traitId)
             {
-                return Traits.TryGetValue(traitId, out var data) && data.IsActive;
+                return CultureTraits.TryGetValue(traitId, out var data) && data.IsActive;
             }
 
             public float GetTraitInfluence(string traitId)
             {
-                return Traits.TryGetValue(traitId, out var data) ? data.Influence : 0f;
+                return CultureTraits.TryGetValue(traitId, out var data) ? data.Influence : 0f;
             }
 
             public void AddTrait(string traitId, float initialInfluence = 0f)
             {
-                if (!Traits.ContainsKey(traitId))
+                if (!CultureTraits.ContainsKey(traitId))
                 {
-                    Traits.Add(traitId, new CultureTraitData(true, initialInfluence));
+                    CultureTraits.Add(traitId, new CultureTraitData(true, initialInfluence));
                 }
             }
 
             public bool RemoveTrait(string traitId)
             {
-                return Traits.Remove(traitId);
+                return CultureTraits.Remove(traitId);
             }
 
             public float GetTotalNegativeInfluence()
             {
                 float total = 0f;
 
-                foreach (var trait in Traits.Values)
+                foreach (var trait in CultureTraits.Values)
                 {
                     if (trait.HasSignificantInfluence(10f)) total += trait.Influence;
                 }
@@ -63,7 +63,7 @@ namespace ER
 
             public override string ToString()
             {
-                return $"{CultureName} (ID: {CultureId}) - Identity: {CultureIdentity:F1}%, Traits: {Traits.Count}";
+                return $"{CultureName} (ID: {CultureId}) - Identity: {CultureIdentity:F1}%, CultureTraits: {CultureTraits.Count}";
             }
         }
     }

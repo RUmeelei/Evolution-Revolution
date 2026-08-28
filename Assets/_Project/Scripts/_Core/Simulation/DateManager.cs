@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace ER
@@ -18,6 +19,10 @@ namespace ER
 
             private SimulationManager simulationManager;
             private SimulationConfig simulationConfig;
+
+            public event Action<float> OnStep;
+            public event Action<float> OnCycle;
+            public event Action<float> OnTier;
 
             private float stepAccumulator = 0f;
 
@@ -62,7 +67,7 @@ namespace ER
 
                     while (stepAccumulator >= 1f)
                     {
-                        MakeStep();
+                        MakeStep(delta);
 
                         stepAccumulator -= 1f;
                     }
@@ -77,7 +82,7 @@ namespace ER
 
                     while (stepAccumulator >= 1f)
                     {
-                        MakeStep();
+                        MakeStep(delta);
 
                         stepAccumulator -= 1f;
                     }
@@ -92,25 +97,33 @@ namespace ER
 
                     while (stepAccumulator >= 1f)
                     {
-                        MakeStep();
+                        MakeStep(delta);
 
                         stepAccumulator -= 1f;
                     }
                 }
             }
 
-            private void MakeStep()
+            private void MakeStep(float delta)
             {
+                OnStep?.Invoke(delta);
+
                 Step++;
                 
                 if (Step > simulationConfig.StepsPerCycle)
                 {
+                    OnCycle?.Invoke(delta);
+
                     Step = 0;
+
                     Cycle++;
 
                     if (Cycle > simulationConfig.CyclesPerTier)
                     {
+                        OnTier?.Invoke(delta);
+
                         Cycle = 0;
+
                         Tier++;
                     }
                 }

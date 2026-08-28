@@ -9,6 +9,7 @@ namespace ER
     {
         using Core;
         using Simulation;
+        using Players;
 
         public class CultureManager : MonoBehaviour
         {
@@ -26,6 +27,7 @@ namespace ER
             private Dictionary<string, CultureTrait> CultureTraitTemplatesDictionary = new Dictionary<string, CultureTrait>();
 
             private SimulationManager simulationManager;
+            private PlayerManager playerManager;
 
             public event Action<float> OnCultureTick;
 
@@ -52,8 +54,18 @@ namespace ER
             {
                 simulationManager = CoreManager.SimulationManager;
 
-                simulationManager.OnSlowTick += ProcessCultureTick;
+                playerManager = CoreManager.PlayerManager;
 
+                playerManager.OnPlayerTick += ProcessCultureTick;
+            }
+
+            void OnDestroy()
+            {
+                if (playerManager != null) playerManager.OnPlayerTick -= ProcessCultureTick;
+            }
+
+            public void Initialize()
+            {
                 var startCulture = CreateCulture(
                     cultureColor: new Color(50f / 255f, 50f / 255f, 50f / 255f),
                     cultureName: "Rosskans",
@@ -62,11 +74,6 @@ namespace ER
 
                 startCulture.AddTrait("NomadicNation");
                 startCulture.AddTrait("BarbarianNation");
-            }
-
-            void OnDestroy()
-            {
-                if (simulationManager != null) simulationManager.OnSlowTick -= ProcessCultureTick;
             }
 
             public CultureData CreateCulture(Color cultureColor, string cultureName = "Nomads", string cultureDescription = "A strong man united nomadic tribes and created a unique culture.")
@@ -115,6 +122,8 @@ namespace ER
             {
                 return Cultures.Where(c => !c.CultureDefeated).ToList();
             }
+
+            public Dictionary<string, CultureData> GetAllCultures() => CulturesDictionary;
 
             public void DefeatCulture(string id)
             {
@@ -178,9 +187,9 @@ namespace ER
                     return;
                 }
 
-                if (!culture.Traits.ContainsKey(traitId))
+                if (!culture.CultureTraits.ContainsKey(traitId))
                 {
-                    culture.Traits.Add(traitId, new CultureTraitData(true, initialInfluence));
+                    culture.CultureTraits.Add(traitId, new CultureTraitData(true, initialInfluence));
 
                     Debug.Log($"Added {template.TraitName} to {culture.CultureName}");
                 }
@@ -194,7 +203,7 @@ namespace ER
             {
                 var culture = GetCulture(cultureId);
 
-                if (culture != null && culture.Traits.Remove(traitId))
+                if (culture != null && culture.CultureTraits.Remove(traitId))
                 {
                     Debug.Log($"Removed trait {traitId} from {culture.CultureName}");
                 }
@@ -206,7 +215,7 @@ namespace ER
 
                 if (culture == null) return null;
 
-                culture.Traits.TryGetValue(traitId, out var data);
+                culture.CultureTraits.TryGetValue(traitId, out var data);
 
                 return data;
             }
@@ -242,8 +251,30 @@ namespace ER
                     float change = UnityEngine.Random.Range(-10f, 10f);
 
                     float negativeInfluence = 0f;
+
+                    var players = playerManager.GetAllPlayers();
+
+                    foreach (var player in players)
+                    {
+                        var resources = player.PlayerResources;
+
+                        resources.TryGetValue("Fruits", out var food);
+
+                        if (food.Amount <= 25f)
+                        {
+                            float penalty = 25f / food.Amount;
+
+                            negativeInfluence += penalty;
+                        }
+                        else if (food.Amount >= 125f)
+                        {
+                            float bonus = food.Amount / 200f;
+
+                            negativeInfluence -= bonus;
+                        }
+                    }
                     
-                    foreach (var traitEntry in culture.Traits)
+                    foreach (var traitEntry in culture.CultureTraits)
                     {
                         string traitId = traitEntry.Key;
 
