@@ -13,6 +13,12 @@ namespace ER
 
             [Header("Economy Loop")]
             public int GatherSeason; // 0 - Per step | 1 - Per cycle | 2 - Per tier
+
+            [Header("World")]
+            public int WorldWidth;
+            public int WorldHeight;
+
+            public float TileSize;
         }
     }
 }

@@ -12,6 +12,8 @@ namespace ER
         using Culture;
         using Resources;
         using Players;
+        using World;
+        using World.Tiles;
 
         public class CoreManager : MonoBehaviour
         {
@@ -32,6 +34,8 @@ namespace ER
             public static CultureManager CultureManager {get; private set;}
             public static ResourceManager ResourceManager {get; private set;}
             public static PlayerManager PlayerManager {get; private set;}
+            public static TileManager TileManager {get; private set;}
+            public static TileVisualManager TileVisualManager {get; private set;}
             public static DatePanelManager DatePanelManager {get; private set;}
             public static MainPanelManager MainPanelManager {get; private set;}
             public static MainMenuPanelManager MainMenuPanelManager {get; private set;}
@@ -41,6 +45,8 @@ namespace ER
             public static void RegisterCultureManager(CultureManager manager) => CultureManager = manager;
             public static void RegisterResourceManager(ResourceManager manager) => ResourceManager = manager;
             public static void RegisterPlayerManager(PlayerManager manager) => PlayerManager = manager;
+            public static void RegisterTileManager(TileManager manager) => TileManager = manager;
+            public static void RegisterTileVisualManager(TileVisualManager manager) => TileVisualManager = manager;
             public static void RegisterDatePanelManager(DatePanelManager manager) => DatePanelManager = manager;
             public static void RegisterMainPanelManager(MainPanelManager manager) => MainPanelManager = manager;
             public static void RegisterMainMenuPanelManager(MainMenuPanelManager manager) => MainMenuPanelManager = manager;
@@ -67,6 +73,10 @@ namespace ER
                 CultureManager.Initialize();
 
                 PlayerManager.Initialize();
+
+                TileManager.Initialize();
+
+                TileVisualManager.Initialize();
             }
         }
     }

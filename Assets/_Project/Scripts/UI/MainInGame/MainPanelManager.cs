@@ -81,7 +81,7 @@ namespace ER
                     {
                         Color color = culture.CultureDefeated ? uiConfig.ErrorColor : uiConfig.MainTextColor;
 
-                        string text = culture.CultureDefeated ? "Defeated nation" : $"{culture.CultureName} | Food : {player.GetFood():F0}";
+                        string text = culture.CultureDefeated ? "Defeated nation" : $"{culture.CultureName}";
 
                         CultureNameText.SetText($"{text}");
                         

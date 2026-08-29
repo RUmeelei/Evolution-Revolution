@@ -15,3 +15,6 @@ MonoBehaviour:
   WarningIdentityThreshold: 50
   ErrorIdentityThreshold: 10
   GatherSeason: 0
+  WorldWidth: 25
+  WorldHeight: 25
+  TileSize: 1
