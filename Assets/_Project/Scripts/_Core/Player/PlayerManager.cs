@@ -123,12 +123,16 @@ namespace ER
                 AttachPlayerCulture(newPlayer.PlayerId, "CUL_0001");
             }
 
-            private PlayerData CreatePlayer(string playerId, string playerName)
+            public PlayerData CreatePlayer(string playerId, string playerName, bool isAI = false)
             {
                 PlayerData player = new PlayerData()
                 {
                     PlayerId = playerId,
                     PlayerName = playerName,
+
+                    PlayerDefeated = false,
+
+                    PlayerAI = isAI,
                 };
 
                 Players.Add(player);
@@ -188,7 +192,7 @@ namespace ER
 
                     player.GatherResource("Fruits", gatheredFood * delta);
 
-                    Debug.Log($"Gathered {gatheredFood * delta} food for {player.PlayerName}");
+                    // Debug.Log($"Gathered {gatheredFood * delta} food for {player.PlayerName}");
                 }
             }
 
@@ -198,12 +202,28 @@ namespace ER
 
                 foreach (var player in Players)
                 {
-                    if (player.PlayerCulture.CultureDefeated) continue;
+                    if (player.PlayerCulture.CultureDefeated)
+                    {
+                        DefeatPlayer(player.PlayerId);
+
+                        continue;
+                    }
 
                     float spentFood = UnityEngine.Random.Range(5f, 15f);
 
                     player.SpendResource("Fruits", 15f * delta);
                 }
+            }
+
+            public void DefeatPlayer(string id)
+            {
+                var player = GetPlayer(id);
+
+                if (player == null || player.PlayerDefeated) return;
+
+                player.PlayerDefeated = true;
+
+                Debug.Log($"{player.PlayerName} has been defeated");
             }
         }
     }

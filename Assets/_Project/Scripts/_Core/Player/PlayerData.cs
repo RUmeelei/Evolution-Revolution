@@ -15,16 +15,23 @@ namespace ER
             public string PlayerId;
             public string PlayerName;
 
+            public bool PlayerDefeated;
+
+            public bool PlayerAI;
+
             // public GovernmentData PlayerGovernment;
             public CultureData PlayerCulture;
 
             public PlayerData(){}
 
-            public PlayerData(string playerId, string playerName)
+            public PlayerData(string playerId, string playerName, bool isAI = false)
             {
                 PlayerId = playerId;
-
                 PlayerName = playerName;
+
+                PlayerDefeated = false;
+
+                PlayerAI = isAI;
             }
 
             public Dictionary<string, ResourceData> PlayerResources = new Dictionary<string, ResourceData>();

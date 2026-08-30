@@ -81,7 +81,7 @@ namespace ER
                     {
                         Color color = culture.CultureDefeated ? uiConfig.ErrorColor : uiConfig.MainTextColor;
 
-                        string text = culture.CultureDefeated ? "Defeated nation" : $"{culture.CultureName}";
+                        string text = culture.CultureDefeated ? "Defeated nation" : $"{culture.CultureName} | {player.GetFood():F0}";
 
                         CultureNameText.SetText($"{text}");
                         
@@ -112,7 +112,7 @@ namespace ER
 
                         string text = culture.CultureDefeated ? "A ruins of defeated nation. The death of civilization. Inevitable, sad or joyful, it doesn't matter anymore." : culture.CultureDescription;
 
-                        CultureDescriptionText.SetText($"{text}");
+                        CultureDescriptionText.SetText($"{text} | {culture.CultureTraits.Count}");
                         
                         CultureDescriptionText.color = color;
                     }

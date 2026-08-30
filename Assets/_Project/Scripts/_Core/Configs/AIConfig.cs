@@ -9,6 +9,9 @@ namespace ER
         {
             [Header("Main AI Settings")]
             public bool IsAIEnabled;
+
+            public int AICulturesCount;
+            public int NeutralCulturesCount;
         }
     }
 }

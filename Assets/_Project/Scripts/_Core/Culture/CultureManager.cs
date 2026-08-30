@@ -8,6 +8,7 @@ namespace ER
     namespace Culture
     {
         using Core;
+        using Configs;
         using Simulation;
         using Players;
 
@@ -28,6 +29,8 @@ namespace ER
 
             private SimulationManager simulationManager;
             private PlayerManager playerManager;
+
+            private MainConfig mainConfig;
 
             public event Action<float> OnCultureTick;
 
@@ -66,14 +69,36 @@ namespace ER
 
             public void Initialize()
             {
+                mainConfig = CoreManager.MainConfig;
+                
+                LoadTraitsFromResources();
+
                 var startCulture = CreateCulture(
                     cultureColor: new Color(50f / 255f, 50f / 255f, 50f / 255f),
                     cultureName: "Rosskans",
                     cultureDescription: "A strong man united nomadic tribes and created a unique culture."
                 );
 
-                startCulture.AddTrait("NomadicNation");
-                startCulture.AddTrait("BarbarianNation");
+                AddRandomTraits(startCulture.CultureId);
+            }
+
+            private void LoadTraitsFromResources()
+            {
+                string[] guids = UnityEditor.AssetDatabase.FindAssets("t:CultureTrait");
+    
+                foreach (string guid in guids)
+                {
+                    string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+
+                    CultureTrait trait = UnityEditor.AssetDatabase.LoadAssetAtPath<CultureTrait>(path);
+
+                    if (trait != null && !CultureTraitTemplatesDictionary.ContainsKey(trait.TraitId))
+                    {
+                        CultureTraitTemplates.Add(trait);
+
+                        CultureTraitTemplatesDictionary.Add(trait.TraitId, trait);
+                    }
+                }
             }
 
             public CultureData CreateCulture(Color cultureColor, string cultureName = "Nomads", string cultureDescription = "A strong man united nomadic tribes and created a unique culture.")
@@ -209,6 +234,22 @@ namespace ER
                 }
             }
 
+            public void AddRandomTraits(string cultureId)
+            {
+                var culture = GetCulture(cultureId);
+
+                if (CultureTraitTemplates == null || CultureTraitTemplates.Count == 0) return;
+
+                int traitCount = UnityEngine.Random.Range(mainConfig.MinStartTraits, mainConfig.MaxStartTraits);
+
+                var shuffled = CultureTraitTemplates.OrderBy(x => UnityEngine.Random.value).Take(traitCount);
+
+                foreach (var trait in shuffled)
+                {
+                    culture.AddTrait(trait.TraitId, 0f);
+                }
+            }
+
             public CultureTraitData GetTraitData(string cultureId, string traitId)
             {
                 var culture = GetCulture(cultureId);
@@ -250,27 +291,29 @@ namespace ER
 
                     float change = UnityEngine.Random.Range(-10f, 10f);
 
-                    float negativeInfluence = 0f;
+                    float foodInfluence = 0f;
+                    float traitInfluence = 0f;
 
                     var players = playerManager.GetAllPlayers();
 
                     foreach (var player in players)
                     {
+
                         var resources = player.PlayerResources;
 
-                        resources.TryGetValue("Fruits", out var food);
+                        var food = player.GetFood();
 
-                        if (food.Amount <= 25f)
+                        if (food <= 25f)
                         {
-                            float penalty = 25f / food.Amount;
+                            float penalty = 25f / food;
 
-                            negativeInfluence += penalty;
+                            foodInfluence += Mathf.Clamp(penalty, 0f, 10f);
                         }
-                        else if (food.Amount >= 125f)
+                        else if (food >= 125f)
                         {
-                            float bonus = food.Amount / 200f;
+                            float bonus = food / 200f;
 
-                            negativeInfluence -= bonus;
+                            foodInfluence -= Mathf.Clamp(bonus, 0f, 5f);
                         }
                     }
                     
@@ -282,7 +325,7 @@ namespace ER
 
                         if (!traitData.IsActive) continue;
 
-                        float traitChange = UnityEngine.Random.Range(-0.2f, 0.2f);
+                        float traitChange = UnityEngine.Random.Range(-0.2f, 1f);
 
                         if (traitEntry.Key == "BarbarianNation")
                         {
@@ -300,11 +343,12 @@ namespace ER
                         {
                             float penalty = UnityEngine.Random.Range(traitData.Influence * 0.01f, traitData.Influence * 0.1f);
 
-                            negativeInfluence += penalty;
+                            traitInfluence += penalty;
                         }
                     }
                     
-                    change -= negativeInfluence;
+                    change -= foodInfluence;
+                    change -= traitInfluence;
 
                     ChangeCultureIdentity(culture.CultureId, change * delta);
                 }

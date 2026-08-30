@@ -22,7 +22,7 @@ namespace ER
                 public bool EnableLogging;
 
                 [Header("References")]
-                [SerializeField] private Camera cam;
+                [SerializeField] private Camera Cam;
 
                 [Header("Tiles")]
                 [SerializeField] private Tilemap BaseTilemap;
@@ -65,13 +65,7 @@ namespace ER
                 {
                     if (tileManager == null) return;
 
-                    for (int y = 0; y < mainConfig.WorldHeight; y++)
-                    {
-                        for (int x = 0; x < mainConfig.WorldWidth; x++)
-                        {
-                            SetTileAt(x, y);
-                        }
-                    }
+                    RenderWorld();
                 }
 
                 public void Initialize()
@@ -79,6 +73,17 @@ namespace ER
                     mainConfig = CoreManager.MainConfig;
 
                     tileManager = CoreManager.TileManager;
+                }
+
+                private void RenderWorld()
+                {
+                    for (int y = 0; y < mainConfig.WorldHeight; y++)
+                    {
+                        for (int x = 0; x < mainConfig.WorldWidth; x++)
+                        {
+                            SetTileAt(x, y);
+                        }
+                    }
                 }
 
                 private void SetTileAt(int x, int y)
@@ -91,7 +96,12 @@ namespace ER
 
                     TileBase tileBase = GetTileVariation(GrassTiles, variation);
 
-                    Color tileColor = Color.white;
+                    float elevation = Mathf.Clamp01(tile.Elevation / 10f);
+                    float brightness = 1f - elevation * 0.5f;
+
+                    brightness = Mathf.Clamp01(brightness);
+
+                    Color tileColor = new Color(brightness, brightness, brightness);
 
                     BaseTilemap.SetTile(tilePos, tileBase);
                     BaseTilemap.SetColor(tilePos, tileColor);

@@ -12,9 +12,51 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 33b5a12f6bc7d0c4682fc97fa3753613, type: 3}
   m_Name: MainConfig
   m_EditorClassIdentifier: Assembly-CSharp::ER.Configs.MainConfig
-  WarningIdentityThreshold: 50
-  ErrorIdentityThreshold: 10
   GatherSeason: 0
   WorldWidth: 25
   WorldHeight: 25
   TileSize: 1
+  GenerateWorldOnStart: 1
+  CultureNamePrefixes:
+  - Ross
+  - Nord
+  - Roman
+  - Frank
+  - German
+  - Byzant
+  - Russ
+  - Rome
+  - Angl
+  - Chin
+  - Jap
+  - Viet
+  - Batu
+  - Afric
+  - Americ
+  CultureNameSuffixes:
+  - s
+  - ian
+  - ians
+  - iansk
+  - o
+  - ou
+  - ous
+  - ousk
+  - i
+  - is
+  - isk
+  - a
+  - an
+  - ans
+  - ansk
+  - ic
+  - ish
+  CameraSmoothing: 1
+  CameraKeyboardScrollSpeed: 5
+  CameraZoomSpeed: 500
+  CameraMinHeight: 1
+  CameraMaxHeight: 500
+  WarningIdentityThreshold: 50
+  ErrorIdentityThreshold: 10
+  MinStartTraits: 1
+  MaxStartTraits: 2

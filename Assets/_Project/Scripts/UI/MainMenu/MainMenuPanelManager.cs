@@ -23,8 +23,13 @@ namespace ER
 
                 [Header("New Game")]
                 [SerializeField] private GameObject NewGamePanel;
-                [SerializeField] private Button StartNewGameButton;
+                [SerializeField] private Button ContinueToCulturesButton;
                 [SerializeField] private Button CloseNewGamePanelButton;
+
+                [Header("Culture Creation")]
+                [SerializeField] private GameObject CultureCreationPanel;
+                [SerializeField] private Button StartNewGameButton;
+                [SerializeField] private Button CloseCultureCreationPanelButton;
 
                 [Header("Load Game")]
                 [SerializeField] private GameObject LoadGamePanel;
@@ -61,8 +66,11 @@ namespace ER
                     if (OpenSettingsPanelButton != null) OpenSettingsPanelButton.onClick.AddListener(OpenSettingsPanelButtonHandler);
                     if (ExitGameButton != null) ExitGameButton.onClick.AddListener(ExitGameButtonHandler);
 
-                    if (StartNewGameButton != null) StartNewGameButton.onClick.AddListener(StartNewGamePanelButtonHandler);
+                    if (ContinueToCulturesButton != null) ContinueToCulturesButton.onClick.AddListener(ContinueToCulturesButtonHandler);
                     if (CloseNewGamePanelButton != null) CloseNewGamePanelButton.onClick.AddListener(CloseNewGamePanelButtonHandler);
+
+                    if (StartNewGameButton != null) StartNewGameButton.onClick.AddListener(StartNewGameButtonHandler);
+                    if (CloseCultureCreationPanelButton != null) CloseCultureCreationPanelButton.onClick.AddListener(CloseCultureCreationPanelButtonHandler);
 
                     if (LoadGameButton != null) LoadGameButton.onClick.AddListener(LoadGameButtonHandler);
                     if (CloseLoadGamePanelButton != null) CloseLoadGamePanelButton.onClick.AddListener(CloseLoadGamePanelButtonHandler);
@@ -112,9 +120,15 @@ namespace ER
                     #endif
                 }
 
-                private void StartNewGamePanelButtonHandler()
+                private void ContinueToCulturesButtonHandler()
                 {
-                    SceneManager.LoadScene("Game");
+                    if (CultureCreationPanel != null)
+                    {
+                        CultureCreationPanel.gameObject.SetActive(true);
+                    }
+                    else SceneManager.LoadScene("Game");
+
+                    CloseNewGamePanelButtonHandler();
                 }
 
                 private void CloseNewGamePanelButtonHandler()
@@ -123,6 +137,21 @@ namespace ER
                     {
                         NewGamePanel.gameObject.SetActive(false);
                     }
+                }
+
+                private void StartNewGameButtonHandler()
+                {
+                    SceneManager.LoadScene("Game");
+                }
+
+                private void CloseCultureCreationPanelButtonHandler()
+                {
+                    if (CultureCreationPanel != null)
+                    {
+                        CultureCreationPanel.gameObject.SetActive(false);
+                    }
+
+                    OpenNewGamePanelButtonHandler();
                 }
 
                 private void LoadGameButtonHandler()

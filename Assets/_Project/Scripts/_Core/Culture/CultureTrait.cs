@@ -7,6 +7,7 @@ namespace ER
         [CreateAssetMenu(fileName = "NewTrait", menuName = "ER/Culture Trait")]
         public class CultureTrait : ScriptableObject
         {
+            [Header("Main")]
             public string TraitId;
             public string TraitName;
             public string Description;

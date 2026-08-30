@@ -682,6 +682,51 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 240380928}
   m_CullTransparentMesh: 1
+--- !u!1 &272622551
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 272622552}
+  - component: {fileID: 272622553}
+  m_Layer: 0
+  m_Name: WorldGeneratorManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &272622552
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 272622551}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 1025.2408, y: 416.815, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1711176729}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &272622553
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 272622551}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 029ddf0a99a2f35468dcde508ac30bcc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ER.World.WorldGeneratorManager
+  Govno: 0
 --- !u!1 &310405210
 GameObject:
   m_ObjectHideFlags: 0
@@ -1551,7 +1596,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ER.World.Tiles.TileVisualManager
   EnableLogging: 0
-  cam: {fileID: 1473350029}
+  Cam: {fileID: 0}
   BaseTilemap: {fileID: 1969976675}
   GrassTiles:
   - {fileID: 11400000, guid: 03948e1c7e472474bb315cce060fdcd9, type: 2}
@@ -1820,6 +1865,51 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ER.Players.PlayerManager
   EnableLogging: 0
   Players: []
+--- !u!1 &956825372
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 956825373}
+  - component: {fileID: 956825374}
+  m_Layer: 0
+  m_Name: CameraManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &956825373
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 956825372}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 14.57111, y: 12.98598, z: 3.04923}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1711176729}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &956825374
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 956825372}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f453271a427d1cb44957ca027a31436e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ER.Core.CameraManager
+  Cam: {fileID: 1473350029}
 --- !u!1 &965710754
 GameObject:
   m_ObjectHideFlags: 0
@@ -2723,11 +2813,13 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 965710755}
+  - {fileID: 956825373}
   - {fileID: 2022743318}
   - {fileID: 1703069798}
   - {fileID: 1517111895}
   - {fileID: 594193950}
   - {fileID: 932869681}
+  - {fileID: 272622552}
   - {fileID: 2064938486}
   - {fileID: 724611656}
   - {fileID: 408237312}
@@ -3390,7 +3482,7 @@ TilemapRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -3409,8 +3501,8 @@ TilemapRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
+  m_SortingLayerID: -1046314613
+  m_SortingLayer: 1
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_ChunkSize: {x: 32, y: 32, z: 32}

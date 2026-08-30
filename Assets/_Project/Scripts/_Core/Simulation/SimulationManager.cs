@@ -16,7 +16,7 @@ namespace ER
             public bool IsSimulationRunning = false;
             public int SimulationSpeed = 1;
 
-            private int tick;
+            private int Tick;
 
             private SimulationConfig simulationConfig;
 
@@ -85,7 +85,7 @@ namespace ER
             {
                 OnTick?.Invoke(delta);
 
-                tick++;
+                Tick++;
             }
 
             public void ProcessSlowTick(float delta)
