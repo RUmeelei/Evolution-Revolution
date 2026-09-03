@@ -14,6 +14,8 @@ namespace ER
                 public float Elevation;
 
                 public int Variation;
+
+                public string Owner;
             }
 
             public enum TileType

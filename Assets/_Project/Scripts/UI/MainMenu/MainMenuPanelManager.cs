@@ -10,6 +10,8 @@ namespace ER
         namespace MainMenu
         {
             using Core;
+            using Configs;
+            using World;
 
             public class MainMenuPanelManager : MonoBehaviour
             {
@@ -25,6 +27,10 @@ namespace ER
                 [SerializeField] private GameObject NewGamePanel;
                 [SerializeField] private Button ContinueToCulturesButton;
                 [SerializeField] private Button CloseNewGamePanelButton;
+                [SerializeField] private Slider WorldSizeSlider;
+                [SerializeField] private Toggle NeutralCulturesToggle;
+                [SerializeField] private Slider AICulturesCountSlider;
+                [SerializeField] private Slider NeutralCulturesCountSlider;
 
                 [Header("Culture Creation")]
                 [SerializeField] private GameObject CultureCreationPanel;
@@ -39,6 +45,8 @@ namespace ER
                 [Header("Settings")]
                 [SerializeField] private GameObject SettingsPanel;
                 [SerializeField] private Button CloseSettingsPanelButton;
+
+                private MainConfig mainConfig;
 
                 void Awake()
                 {
@@ -61,6 +69,8 @@ namespace ER
 
                 void Start()
                 {
+                    mainConfig = CoreManager.MainConfig;
+                    
                     if (OpenNewGamePanelButton != null) OpenNewGamePanelButton.onClick.AddListener(OpenNewGamePanelButtonHandler);
                     if (OpenLoadGamePanelButton != null) OpenLoadGamePanelButton.onClick.AddListener(OpenLoadGamePanelButtonHandler);
                     if (OpenSettingsPanelButton != null) OpenSettingsPanelButton.onClick.AddListener(OpenSettingsPanelButtonHandler);
@@ -127,6 +137,26 @@ namespace ER
                         CultureCreationPanel.gameObject.SetActive(true);
                     }
                     else SceneManager.LoadScene("Game");
+
+                    if (WorldSizeSlider != null)
+                    {
+                        WorldCreationData.WorldSize = (int)WorldSizeSlider.value;
+                    }
+
+                    if (NeutralCulturesToggle != null)
+                    {
+                        WorldCreationData.ToggleNeutralCultures = NeutralCulturesToggle;
+                    }
+
+                    if (AICulturesCountSlider != null)
+                    {
+                        WorldCreationData.AICulturesCount = (int)AICulturesCountSlider.value;
+                    }
+
+                    if (NeutralCulturesCountSlider != null)
+                    {
+                        WorldCreationData.NeutralCulturesCount = (int)NeutralCulturesCountSlider.value;
+                    }
 
                     CloseNewGamePanelButtonHandler();
                 }

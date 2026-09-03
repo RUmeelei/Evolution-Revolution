@@ -53,18 +53,18 @@ namespace ER
 
                 aiConfig = CoreManager.AIConfig;
 
-                if (mainConfig.GenerateWorldOnStart) GenerateWorld();
+                GenerateWorld();
             }
 
             public void GenerateWorld()
             {
-                List<string> aiCultureIds = GenerateAICultures(aiConfig.AICulturesCount);
+                List<string> aiCultureIds = GenerateAICultures(WorldCreationData.AICulturesCount);
 
-                List<string> neutralCultureIds = GenerateNeutralCultures(aiConfig.NeutralCulturesCount);
+                List<string> neutralCultureIds = GenerateNeutralCultures(WorldCreationData.NeutralCulturesCount);
 
                 CreateAIPlayers(aiCultureIds);
 
-                CreateNeutralCultures(neutralCultureIds);
+                if (WorldCreationData.ToggleNeutralCultures) CreateNeutralCultures(neutralCultureIds);
             }
 
             private List<string> GenerateAICultures(int count)
@@ -75,7 +75,7 @@ namespace ER
                 {
                     string name = GenerateCultureName();
 
-                    Color color = Random.ColorHSV(0f, 1f, 0.5f, 1f, 0.5f, 1f);
+                    Color color = Random.ColorHSV(0f, 1f, 0f, 1f, 0f, 1f);
 
                     var culture = cultureManager.CreateCulture(
                         cultureColor: color,
@@ -99,7 +99,7 @@ namespace ER
                 {
                     string name = GenerateCultureName();
 
-                    Color color = Random.ColorHSV(0f, 1f, 0.5f, 1f, 0.5f, 1f);
+                    Color color = Random.ColorHSV(0.1f, 0.4f, 0.1f, 0.4f, 0.1f, 0.4f);
 
                     var culture = cultureManager.CreateCulture(
                         cultureColor: color,

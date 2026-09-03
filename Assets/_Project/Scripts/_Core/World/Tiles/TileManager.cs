@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using System.Collections.Generic;
 
 namespace ER
 {
@@ -22,6 +23,8 @@ namespace ER
                 public bool EnableLogging;
 
                 private MainConfig mainConfig;
+
+                private CultureManager cultureManager;
 
                 private TileData[] Tiles;
 
@@ -61,8 +64,10 @@ namespace ER
                 {
                     mainConfig = CoreManager.MainConfig;
 
-                    Width = mainConfig.WorldWidth;
-                    Height = mainConfig.WorldHeight;
+                    cultureManager = CoreManager.CultureManager;
+
+                    Width = WorldCreationData.WorldSize;
+                    Height = WorldCreationData.WorldSize;
 
                     Tiles = new TileData[Width * Height];
 
@@ -71,11 +76,24 @@ namespace ER
 
                 private void GenerateWorld()
                 {
+                    List<CultureData> activeCultures = cultureManager.GetActiveCultures();
+
                     for (int y = 0; y < Height; y++)
                     {
                         for (int x = 0; x < Width; x++)
                         {
                             int i = y * Width + x;
+
+                            CultureData randomCulture = null;
+
+                            int randomId = Random.Range(0, activeCultures.Count);
+
+                            if (activeCultures.Count > 0 && activeCultures[randomId] != null) randomCulture = activeCultures[randomId];
+                            else randomId = Random.Range(0, activeCultures.Count);
+
+                            activeCultures[randomId] = null;
+
+                            string cultureId = randomCulture != null ? randomCulture.CultureId : null;
                             
                             Tiles[i] = new TileData
                             {
@@ -84,6 +102,8 @@ namespace ER
                                 Elevation = Random.Range(0f, 10f),
 
                                 Variation = Random.Range(0, 15),
+
+                                Owner = cultureId,
                             };
                         }
                     }

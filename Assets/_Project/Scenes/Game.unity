@@ -1596,8 +1596,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ER.World.Tiles.TileVisualManager
   EnableLogging: 0
-  Cam: {fileID: 0}
+  EnableElevationDisplay: 0
+  MapMode: 0
+  Cam: {fileID: 1473350029}
   BaseTilemap: {fileID: 1969976675}
+  WaterTiles: []
   GrassTiles:
   - {fileID: 11400000, guid: 03948e1c7e472474bb315cce060fdcd9, type: 2}
   - {fileID: 11400000, guid: ecb3cc58129f3bf49b1d66e1aa0d08ce, type: 2}
@@ -1615,6 +1618,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: eaf69395d0586004ba788005430e1ca0, type: 2}
   - {fileID: 11400000, guid: 811c7a2587d281e4f87205ce9d4ef200, type: 2}
   - {fileID: 11400000, guid: b26999d51c1bc644f95319fbc4e99c25, type: 2}
+  SandTiles: []
+  RockTiles: []
+  BlankTiles:
+  - {fileID: 11400000, guid: 0950c1c2f4673b242bdb8ce1b99b4a01, type: 2}
 --- !u!1 &777418459
 GameObject:
   m_ObjectHideFlags: 0
