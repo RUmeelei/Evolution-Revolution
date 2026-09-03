@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using System.Collections.Generic;
 
 namespace ER
 {
@@ -39,6 +40,8 @@ namespace ER
 
                 private MainConfig mainConfig;
 
+                private HashSet<Vector2Int> DirtyTiles = new HashSet<Vector2Int>();
+
                 void Awake()
                 {
                     if (transform.parent != null)
@@ -72,7 +75,17 @@ namespace ER
                 {
                     if (tileManager == null) return;
 
-                    RenderWorld();
+                    if (DirtyTiles.Count > 0)
+                    {
+                        RenderDirtyTiles();
+                    }
+
+                    if (Input.GetKeyDown(KeyCode.M))
+                    {
+                        MapMode = MapMode == 0 ? 1 : 0;
+
+                        RenderWorld();
+                    }
                 }
 
                 public void Initialize()
@@ -80,10 +93,14 @@ namespace ER
                     mainConfig = CoreManager.MainConfig;
 
                     tileManager = CoreManager.TileManager;
+
+                    RenderWorld();
                 }
 
                 private void RenderWorld()
                 {
+                    if (tileManager == null) return;
+                    
                     for (int y = 0; y < WorldCreationData.WorldSize; y++)
                     {
                         for (int x = 0; x < WorldCreationData.WorldSize; x++)
@@ -91,6 +108,42 @@ namespace ER
                             SetTileAt(x, y);
                         }
                     }
+                }
+
+                private void RenderVisibleWorld()
+                {
+                    if (tileManager == null) return;
+
+                    float halfH = Cam.orthographicSize;
+                    float halfW = halfH * Cam.aspect;
+
+                    Vector3 camPos = Cam.transform.position;
+
+                    int minX = Mathf.Max(0, Mathf.FloorToInt((camPos.x - halfW) / mainConfig.TileSize));
+                    int maxX = Mathf.Min(WorldCreationData.WorldSize - 1, Mathf.CeilToInt((camPos.x + halfW) / mainConfig.TileSize));
+
+                    int minY = Mathf.Max(0, Mathf.FloorToInt((camPos.y - halfH) / mainConfig.TileSize));
+                    int maxY = Mathf.Min(WorldCreationData.WorldSize - 1, Mathf.CeilToInt((camPos.y + halfH) / mainConfig.TileSize));
+
+                    for (int y = minY; y <= maxY; y++)
+                    {
+                        for (int x = minX; x <= maxX; x++)
+                        {
+                            SetTileAt(x, y);
+                        }
+                    }
+                }
+
+                private void RenderDirtyTiles()
+                {
+                    if (DirtyTiles.Count == 0 || tileManager == null) return;
+
+                    foreach (var pos in DirtyTiles)
+                    {
+                        SetTileAt(pos.x, pos.y);
+                    }
+
+                    DirtyTiles.Clear();
                 }
 
                 private void SetTileAt(int x, int y)
@@ -146,7 +199,7 @@ namespace ER
                     {
                         tileBase = GetTileVariation(BlankTiles, variation);
 
-                        tileColor = tile.Owner != null ? cultureManager.GetCulture(tile.Owner).CultureColor : Color.white;
+                        tileColor = tile.Owner != "CUL_NONE" ? cultureManager.GetCulture(tile.Owner).CultureColor : Color.white;
                     }
 
                     BaseTilemap.SetTile(tilePos, tileBase);
@@ -160,6 +213,13 @@ namespace ER
                     if (variation >= 0 && variation < tileBase.Length) return tileBase[variation];
 
                     return tileBase.Length > 0 ? tileBase[0] : BlankTiles[0];
+                }
+
+                public void MarkTileDirty(int x, int y)
+                {
+                    if (x < 0 || y < 0 || x >= WorldCreationData.WorldSize || y >= WorldCreationData.WorldSize) return;
+
+                    DirtyTiles.Add(new Vector2Int(x, y));
                 }
             }
         }

@@ -25,6 +25,7 @@ namespace ER
                 private MainConfig mainConfig;
 
                 private CultureManager cultureManager;
+                private TileVisualManager tileVisualManager;
 
                 private TileData[] Tiles;
 
@@ -65,6 +66,7 @@ namespace ER
                     mainConfig = CoreManager.MainConfig;
 
                     cultureManager = CoreManager.CultureManager;
+                    tileVisualManager = CoreManager.TileVisualManager;
 
                     Width = WorldCreationData.WorldSize;
                     Height = WorldCreationData.WorldSize;
@@ -76,24 +78,11 @@ namespace ER
 
                 private void GenerateWorld()
                 {
-                    List<CultureData> activeCultures = cultureManager.GetActiveCultures();
-
                     for (int y = 0; y < Height; y++)
                     {
                         for (int x = 0; x < Width; x++)
                         {
                             int i = y * Width + x;
-
-                            CultureData randomCulture = null;
-
-                            int randomId = Random.Range(0, activeCultures.Count);
-
-                            if (activeCultures.Count > 0 && activeCultures[randomId] != null) randomCulture = activeCultures[randomId];
-                            else randomId = Random.Range(0, activeCultures.Count);
-
-                            activeCultures[randomId] = null;
-
-                            string cultureId = randomCulture != null ? randomCulture.CultureId : null;
                             
                             Tiles[i] = new TileData
                             {
@@ -103,13 +92,91 @@ namespace ER
 
                                 Variation = Random.Range(0, 15),
 
-                                Owner = cultureId,
+                                Owner = "CUL_NONE",
                             };
                         }
                     }
                 }
 
                 public TileData GetTile(int x, int y) => Tiles[y * Width + x];
+
+                public List<TileData> GetNeighboringTiles(int x, int y)
+                {
+                    int size = WorldCreationData.WorldSize;
+
+                    var tiles = new List<TileData>(4);
+
+                    foreach (var (dx, dy) in new[] {(-1, 0), (1, 0), (0, -1), (0, 1)})
+                    {
+                        int nx = x + dx;
+
+                        int ny = y + dy;
+
+                        if (nx >= 0 && nx < size && ny >= 0 && ny < size) tiles.Add(GetTile(nx, ny));
+                    }
+
+                    return tiles;
+                }
+
+                public void SetTileType(int x, int y, TileType newType)
+                {
+                    if (x < 0 || x >= Width || y < 0 || y >= Height) return;
+
+                    int i = y * Width + x;
+
+                    TileData tile = Tiles[i];
+
+                    tile.Type = newType;
+
+                    Tiles[i] = tile;
+
+                    tileVisualManager.MarkTileDirty(x, y);
+                }
+
+                public void SetTileElevation(int x, int y, float newElevation)
+                {
+                    if (x < 0 || x >= Width || y < 0 || y >= Height) return;
+
+                    int i = y * Width + x;
+
+                    TileData tile = Tiles[i];
+
+                    tile.Elevation = newElevation;
+
+                    Tiles[i] = tile;
+
+                    tileVisualManager.MarkTileDirty(x, y);
+                }
+
+                public void SetTileVariation(int x, int y, int newVariation)
+                {
+                    if (x < 0 || x >= Width || y < 0 || y >= Height) return;
+
+                    int i = y * Width + x;
+
+                    TileData tile = Tiles[i];
+
+                    tile.Variation = newVariation;
+
+                    Tiles[i] = tile;
+
+                    tileVisualManager.MarkTileDirty(x, y);
+                }
+
+                public void SetTileOwner(int x, int y, string newOwner)
+                {
+                    if (x < 0 || x >= Width || y < 0 || y >= Height) return;
+
+                    int i = y * Width + x;
+
+                    TileData tile = Tiles[i];
+
+                    tile.Owner = newOwner;
+
+                    Tiles[i] = tile;
+
+                    tileVisualManager.MarkTileDirty(x, y);
+                }
             }
         }
     }
