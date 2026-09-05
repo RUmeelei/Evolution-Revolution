@@ -13,10 +13,7 @@ MonoBehaviour:
   m_Name: MainConfig
   m_EditorClassIdentifier: Assembly-CSharp::ER.Configs.MainConfig
   GatherSeason: 0
-  WorldWidth: 25
-  WorldHeight: 25
-  TileSize: 1
-  GenerateWorldOnStart: 1
+  TileSize: 10
   CultureNamePrefixes:
   - Ross
   - Nord
@@ -53,7 +50,7 @@ MonoBehaviour:
   - ish
   CameraSmoothing: 1
   CameraKeyboardScrollSpeed: 5
-  CameraZoomSpeed: 500
+  CameraZoomSpeed: 1000
   CameraMinHeight: 1
   CameraMaxHeight: 500
   WarningIdentityThreshold: 50

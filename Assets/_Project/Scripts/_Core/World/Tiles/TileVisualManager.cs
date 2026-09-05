@@ -29,6 +29,10 @@ namespace ER
 
                 [Header("Tiles")]
                 [SerializeField] private Tilemap BaseTilemap;
+                [SerializeField] private Tilemap OwnerTilemap;
+                [SerializeField] private Tilemap StrategicTilemap;
+                [SerializeField] private Tilemap WTFTilemap;
+
                 [SerializeField] private TileBase[] WaterTiles;
                 [SerializeField] private TileBase[] GrassTiles;
                 [SerializeField] private TileBase[] SandTiles;
@@ -101,6 +105,9 @@ namespace ER
                 {
                     if (tileManager == null) return;
                     
+                    BaseTilemap.ClearAllTiles();
+                    OwnerTilemap.ClearAllTiles();
+                    
                     for (int y = 0; y < WorldCreationData.WorldSize; y++)
                     {
                         for (int x = 0; x < WorldCreationData.WorldSize; x++)
@@ -113,6 +120,9 @@ namespace ER
                 private void RenderVisibleWorld()
                 {
                     if (tileManager == null) return;
+                    
+                    BaseTilemap.ClearAllTiles();
+                    OwnerTilemap.ClearAllTiles();
 
                     float halfH = Cam.orthographicSize;
                     float halfW = halfH * Cam.aspect;
@@ -138,6 +148,9 @@ namespace ER
                 {
                     if (DirtyTiles.Count == 0 || tileManager == null) return;
 
+                    BaseTilemap.ClearAllTiles();
+                    OwnerTilemap.ClearAllTiles();
+
                     foreach (var pos in DirtyTiles)
                     {
                         SetTileAt(pos.x, pos.y);
@@ -158,52 +171,53 @@ namespace ER
 
                     Color tileColor = Color.white;
 
-                    if (MapMode == 0)
+                    switch (tile.Type)
                     {
-                        switch (tile.Type)
-                        {
-                            case TileType.Water:
-                                tileBase = GetTileVariation(WaterTiles, variation);
-
-                            break;
-
-                            case TileType.Grass:
-                                tileBase = GetTileVariation(GrassTiles, variation);
-
-                            break;
-
-                            case TileType.Sand:
-                                tileBase = GetTileVariation(SandTiles, variation);
-
-                            break;
-
-                            case TileType.Rock:
-                                tileBase = GetTileVariation(RockTiles, variation);
-
-                            break;
-
-                            default :
-                                tileBase = GetTileVariation(BlankTiles, variation);
-
-                            break;
-                        }
-
-                        float elevation = Mathf.Clamp01(tile.Elevation / 10f);
-                        float brightness = EnableElevationDisplay ? 1f - elevation * 0.5f : 1f;
-
-                        brightness = Mathf.Clamp01(brightness);
-
-                        tileColor = new Color(brightness, brightness, brightness);
+                        case TileType.Water:
+                            tileBase = GetTileVariation(WaterTiles, variation);
+     
+                        break;
+     
+                        case TileType.Grass:
+                            tileBase = GetTileVariation(GrassTiles, variation);
+     
+                        break;
+     
+                        case TileType.Sand:
+                            tileBase = GetTileVariation(SandTiles, variation);
+     
+                        break;
+     
+                        case TileType.Rock:
+                            tileBase = GetTileVariation(RockTiles, variation);
+     
+                        break;
+     
+                        default :
+                            tileBase = GetTileVariation(BlankTiles, variation);
+     
+                        break;
                     }
-                    else if (MapMode == 1)
+     
+                    float elevation = Mathf.Clamp01(tile.Elevation / 10f);
+                    float brightness = EnableElevationDisplay ? 1f - elevation * 0.5f : 1f;
+     
+                    brightness = Mathf.Clamp01(brightness);
+     
+                    tileColor = new Color(brightness, brightness, brightness);
+     
+                    BaseTilemap.SetTile(tilePos, tileBase);
+                    BaseTilemap.SetColor(tilePos, tileColor);
+
+                    if (MapMode == 1)
                     {
                         tileBase = GetTileVariation(BlankTiles, variation);
 
-                        tileColor = tile.Owner != "CUL_NONE" ? cultureManager.GetCulture(tile.Owner).CultureColor : Color.white;
+                        tileColor = tile.Owner != "CUL_NONE" ? new Color(cultureManager.GetCulture(tile.Owner).CultureColor.r, cultureManager.GetCulture(tile.Owner).CultureColor.g, cultureManager.GetCulture(tile.Owner).CultureColor.b, 0.2f) : new Color(1f, 1f, 1f, 0.2f);
+     
+                        OwnerTilemap.SetTile(tilePos, tileBase);
+                        OwnerTilemap.SetColor(tilePos, tileColor);
                     }
-
-                    BaseTilemap.SetTile(tilePos, tileBase);
-                    BaseTilemap.SetColor(tilePos, tileColor);
                 }
 
                 private TileBase GetTileVariation(TileBase[] tileBase, int variation = 0)

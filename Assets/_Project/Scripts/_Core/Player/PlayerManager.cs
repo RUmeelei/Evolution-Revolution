@@ -116,11 +116,7 @@ namespace ER
 
             public void Initialize()
             {
-                var newPlayer = CreatePlayer(playerId : "PLAYER_0001", playerName : "RUmeelei");
-
-                newPlayer.GatherResource("Fruits", 100f);
-
-                AttachPlayerCulture(newPlayer.PlayerId, "CUL_0001");
+                
             }
 
             public PlayerData CreatePlayer(string playerId, string playerName, bool isAI = false)

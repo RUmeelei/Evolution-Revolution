@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 
 namespace ER
@@ -11,11 +12,14 @@ namespace ER
         {
             using Core;
             using Configs;
+            using Culture;
             using World;
 
             public class MainMenuPanelManager : MonoBehaviour
             {
                 public static MainMenuPanelManager Instance {get; private set;}
+
+                public static List<CultureTrait> CultureTraits = new List<CultureTrait>();
 
                 [Header("Main")]
                 [SerializeField] private Button OpenNewGamePanelButton;
@@ -36,6 +40,9 @@ namespace ER
                 [SerializeField] private GameObject CultureCreationPanel;
                 [SerializeField] private Button StartNewGameButton;
                 [SerializeField] private Button CloseCultureCreationPanelButton;
+                [SerializeField] private TMP_InputField CultureNameInput;
+                [SerializeField] private TMP_InputField CultureDescriptionInput;
+                [SerializeField] private TextMeshProUGUI CultureTraitsPointsText;
 
                 [Header("Load Game")]
                 [SerializeField] private GameObject LoadGamePanel;
@@ -47,6 +54,8 @@ namespace ER
                 [SerializeField] private Button CloseSettingsPanelButton;
 
                 private MainConfig mainConfig;
+
+                // private int CultureTraitsPoints;
 
                 void Awake()
                 {
@@ -86,6 +95,8 @@ namespace ER
                     if (CloseLoadGamePanelButton != null) CloseLoadGamePanelButton.onClick.AddListener(CloseLoadGamePanelButtonHandler);
 
                     if (CloseSettingsPanelButton != null) CloseSettingsPanelButton.onClick.AddListener(CloseSettingsPanelButtonHandler);
+                
+                    LoadTraitsFromResources();
                 }
 
                 private void OpenNewGamePanelButtonHandler()
@@ -132,6 +143,8 @@ namespace ER
 
                 private void ContinueToCulturesButtonHandler()
                 {
+                    // CultureTraitsPoints = 3;
+
                     if (CultureCreationPanel != null)
                     {
                         CultureCreationPanel.gameObject.SetActive(true);
@@ -171,6 +184,16 @@ namespace ER
 
                 private void StartNewGameButtonHandler()
                 {
+                    string name = CultureNameInput.text.Trim();
+                    string description = CultureDescriptionInput.text.Trim();
+
+                    if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(description)) return;
+
+                    CultureCreationData.Name = name;
+                    CultureCreationData.Description = description;
+
+                    CultureCreationData.Color = Random.ColorHSV(0f, 1f, 0f, 1f, 0f, 1f);
+
                     SceneManager.LoadScene("Game");
                 }
 
@@ -202,6 +225,20 @@ namespace ER
                     if (SettingsPanel != null)
                     {
                         SettingsPanel.gameObject.SetActive(false);
+                    }
+                }
+
+                private void LoadTraitsFromResources()
+                {
+                    string[] guids = UnityEditor.AssetDatabase.FindAssets("t:CultureTrait");
+
+                    foreach (string guid in guids)
+                    {
+                        string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+
+                        CultureTrait trait = UnityEditor.AssetDatabase.LoadAssetAtPath<CultureTrait>(path);
+
+                        if (trait != null) CultureTraits.Add(trait);
                     }
                 }
             }

@@ -72,14 +72,6 @@ namespace ER
                 mainConfig = CoreManager.MainConfig;
                 
                 LoadTraitsFromResources();
-
-                var startCulture = CreateCulture(
-                    cultureColor: new Color(50f / 255f, 50f / 255f, 50f / 255f),
-                    cultureName: "Rosskans",
-                    cultureDescription: "A strong man united nomadic tribes and created a unique culture."
-                );
-
-                AddRandomTraits(startCulture.CultureId);
             }
 
             private void LoadTraitsFromResources()

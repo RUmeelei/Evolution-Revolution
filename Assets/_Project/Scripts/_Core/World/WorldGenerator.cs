@@ -58,13 +58,41 @@ namespace ER
 
             public void GenerateWorld()
             {
+                List<string> cultureIds = GenerateCultures(1);
+
                 List<string> aiCultureIds = GenerateAICultures(WorldCreationData.AICulturesCount);
 
                 List<string> neutralCultureIds = GenerateNeutralCultures(WorldCreationData.NeutralCulturesCount);
 
+                CreatePlayers(cultureIds);
+
                 CreateAIPlayers(aiCultureIds);
 
                 if (WorldCreationData.ToggleNeutralCultures) CreateNeutralCultures(neutralCultureIds);
+            }
+
+            private List<string> GenerateCultures(int count)
+            {
+                List<string> cultureIds = new List<string>();
+
+                for (int i = 0; i < count; i++)
+                {
+                    string name = GenerateCultureName();
+
+                    Color color = Random.ColorHSV(0f, 1f, 0f, 1f, 0f, 1f);
+
+                    var culture = cultureManager.CreateCulture(
+                        cultureName: CultureCreationData.Name,
+                        cultureDescription: CultureCreationData.Description,
+                        cultureColor: CultureCreationData.Color
+                    );
+
+                    cultureManager.AddRandomTraits(culture.CultureId);
+
+                    cultureIds.Add(culture.CultureId);
+                }
+
+                return cultureIds;
             }
 
             private List<string> GenerateAICultures(int count)
@@ -130,6 +158,21 @@ namespace ER
                 string suffix = mainConfig.CultureNameSuffixes != null && mainConfig.CultureNameSuffixes.Length > 0 ? mainConfig.CultureNameSuffixes[Random.Range(0, mainConfig.CultureNameSuffixes.Length)] : "";
 
                 return $"{prefix}{suffix}";
+            }
+
+            public void CreatePlayers(List<string> cultureIds)
+            {
+                for (int i = 0; i < cultureIds.Count; i++)
+                {
+                    string playerId = $"PLAYER_{i + 1:D4}";
+                    string playerName = $"RUmeelei";
+
+                    var player = playerManager.CreatePlayer(playerId, playerName, isAI : false);
+
+                    playerManager.AttachPlayerCulture(player.PlayerId, cultureIds[i]);
+
+                    player.GatherResource("Fruits", 100f);
+                }
             }
 
             public void CreateAIPlayers(List<string> cultureIds)
