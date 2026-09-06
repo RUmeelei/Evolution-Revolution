@@ -5,6 +5,8 @@ namespace ER
 {
     namespace Culture
     {
+        using Unit;
+            
         public static class CultureCreationData
         {
             public static string Name;
@@ -13,6 +15,8 @@ namespace ER
             public static Color Color;
 
             public static List<CultureTrait> CultureTraits = new List<CultureTrait>();
+
+            public static UnitEthnicity CultureEthnicity;
         }
     }
 }

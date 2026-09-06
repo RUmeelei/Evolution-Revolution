@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ac01d30bec397e42960799c457cb42a, type: 3}
+  m_Name: African
+  m_EditorClassIdentifier: Assembly-CSharp::ER.Unit.CultureSprites
+  Ethnicity: 2
+  Human:
+    Up: {fileID: 6418283156869558377, guid: cb7d0235e8b91ab4b91aaa863139b575, type: 3}
+    Right: {fileID: 5053219868714232669, guid: cb7d0235e8b91ab4b91aaa863139b575, type: 3}
+    Down: {fileID: 2269961892177271623, guid: cb7d0235e8b91ab4b91aaa863139b575, type: 3}
+    Left: {fileID: 3390462510488371380, guid: cb7d0235e8b91ab4b91aaa863139b575, type: 3}
+    UpBlink: {fileID: -3274781012337574405, guid: d46b46d56eb074f46b8154b2068d5549, type: 3}
+    RightBlink: {fileID: 1986872677247266200, guid: d46b46d56eb074f46b8154b2068d5549, type: 3}
+    DownBlink: {fileID: 6722175408850736256, guid: d46b46d56eb074f46b8154b2068d5549, type: 3}
+    LeftBlink: {fileID: -5337176881382907772, guid: d46b46d56eb074f46b8154b2068d5549, type: 3}

@@ -57,3 +57,4 @@ MonoBehaviour:
   ErrorIdentityThreshold: 10
   MinStartTraits: 1
   MaxStartTraits: 2
+  UnitSmoothSpeed: 10

@@ -14,7 +14,7 @@ namespace ER
             public float Morale {get; set;}
             public float MaxMorale {get; protected set;}
 
-            protected Living(string id, string name, float maxHealth, float maxSpeed, float stamina) : base(id, name, maxHealth, maxSpeed)
+            protected Living(string id, string name, float maxHealth, float maxSpeed, float stamina, string cultureId) : base(id, name, maxHealth, maxSpeed, cultureId)
             {
                 MaxStamina = stamina;
                 Stamina = stamina;

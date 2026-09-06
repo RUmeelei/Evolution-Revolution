@@ -14,6 +14,7 @@ namespace ER
             using Configs;
             using Culture;
             using World;
+            using Unit;
 
             public class MainMenuPanelManager : MonoBehaviour
             {
@@ -193,6 +194,8 @@ namespace ER
                     CultureCreationData.Description = description;
 
                     CultureCreationData.Color = Random.ColorHSV(0f, 1f, 0f, 1f, 0f, 1f);
+
+                    CultureCreationData.CultureEthnicity = UnitEthnicity.European;
 
                     SceneManager.LoadScene("Game");
                 }

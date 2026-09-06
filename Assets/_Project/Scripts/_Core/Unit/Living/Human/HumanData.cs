@@ -14,7 +14,7 @@ namespace ER
 
             public List<string> Inventory {get; private set;}
 
-            public Human(string id, string firstName, string lastName, int age) : base(id, $"{firstName} {lastName}", 100f, 5f, 50f)
+            public Human(string id, string firstName, string lastName, int age, Vector2 position, string cultureId = "CUL_NONE") : base(id, $"{firstName} {lastName}", 100f, 2f, 50f, cultureId)
             {
                 FirstName = firstName;
                 LastName = lastName;
@@ -22,6 +22,19 @@ namespace ER
                 Age = age;
 
                 Inventory = new List<string>();
+
+                base.Move(position);
+            }
+
+            public void Rename(string firstName, string lastName)
+            {
+                if (!string.IsNullOrEmpty(firstName)) FirstName = firstName;
+                if (!string.IsNullOrEmpty(lastName)) LastName = lastName;
+            }
+
+            public void ChangeAge(int age)
+            {
+                Age = Mathf.Max(0, Age + age);
             }
 
             public void AddItem(string item)

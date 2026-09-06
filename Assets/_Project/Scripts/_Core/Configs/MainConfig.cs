@@ -30,6 +30,9 @@ namespace ER
 
             public int MinStartTraits;
             public int MaxStartTraits;
+
+            [Header("Units")]
+            public float UnitSmoothSpeed;
         }
     }
 }
