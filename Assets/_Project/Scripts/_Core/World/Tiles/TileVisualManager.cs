@@ -120,9 +120,6 @@ namespace ER
                 private void RenderVisibleWorld()
                 {
                     if (tileManager == null) return;
-                    
-                    BaseTilemap.ClearAllTiles();
-                    OwnerTilemap.ClearAllTiles();
 
                     float halfH = Cam.orthographicSize;
                     float halfW = halfH * Cam.aspect;
@@ -147,9 +144,6 @@ namespace ER
                 private void RenderDirtyTiles()
                 {
                     if (DirtyTiles.Count == 0 || tileManager == null) return;
-
-                    BaseTilemap.ClearAllTiles();
-                    OwnerTilemap.ClearAllTiles();
 
                     foreach (var pos in DirtyTiles)
                     {
@@ -213,7 +207,9 @@ namespace ER
                     {
                         tileBase = GetTileVariation(BlankTiles, variation);
 
-                        tileColor = tile.Owner != "CUL_NONE" ? new Color(cultureManager.GetCulture(tile.Owner).CultureColor.r, cultureManager.GetCulture(tile.Owner).CultureColor.g, cultureManager.GetCulture(tile.Owner).CultureColor.b, 0.2f) : new Color(1f, 1f, 1f, 0.2f);
+                        tileColor = tile.Owner != "CUL_NONE" ? cultureManager.GetCulture(tile.Owner).CultureColor : Color.white;
+
+                        tileColor.a = tile.Owner != "CUL_NONE" ? 0.5f : 0.2f;
      
                         OwnerTilemap.SetTile(tilePos, tileBase);
                         OwnerTilemap.SetColor(tilePos, tileColor);

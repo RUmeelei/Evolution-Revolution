@@ -28,6 +28,7 @@ namespace ER
             private int NextUnitId = 1;
 
             private SimulationManager simulationManager;
+            private CultureManager cultureManager;
 
             void Awake()
             {
@@ -58,6 +59,20 @@ namespace ER
                 simulationManager = CoreManager.SimulationManager;
 
                 simulationManager.OnTick += ProcessUnitTick;
+
+                cultureManager = CoreManager.CultureManager;
+            }
+
+            public void Initialize()
+            {
+                var cultures = cultureManager.GetActiveCultures();
+
+                foreach (var culture in cultures)
+                {
+                    Vector2 position = new Vector2(5f, 5f);
+
+                    CreateHuman($"Name {culture.CultureName}", $"Last Name {culture.CultureName}", 0, position, culture.CultureId);
+                }
             }
 
             private CultureSprites GetCultureSprites(UnitEthnicity ethnicity)
@@ -170,7 +185,7 @@ namespace ER
                 {
                     unit.Update(delta);
 
-                    if (!unit.HasTarget) unit.SetTarget(new Vector2(Random.Range(-2f, 2f), Random.Range(-2f, 2f)));
+                    if (!unit.HasTarget && Random.value > 0.9f) unit.SetTarget(new Vector2(Random.Range(-2f, 2f), Random.Range(-2f, 2f)));
                 }
             }
         }

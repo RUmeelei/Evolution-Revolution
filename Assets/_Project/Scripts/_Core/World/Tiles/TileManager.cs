@@ -74,6 +74,11 @@ namespace ER
                     Tiles = new TileData[Width * Height];
 
                     GenerateWorld();
+
+                    if (cultureManager.GetActiveCultures().Count > 0)
+                    {
+                        GenerateCultureCapitals();
+                    }
                 }
 
                 private void GenerateWorld()
@@ -94,6 +99,46 @@ namespace ER
 
                                 Owner = "CUL_NONE",
                             };
+                        }
+                    }
+                }
+
+                private void GenerateCultureCapitals()
+                {
+                    foreach (var culture in cultureManager.GetActiveCultures())
+                    {
+                        int _x = 0;
+                        int _y = 0;
+
+                        float bestScore = 0f;
+
+                        for (int y = 0; y < Height; y++)
+                        {
+                            for (int x = 0; x < Width; x++)
+                            {
+                                int i = y * Width + x;
+
+                                if (Tiles[i].Owner != "CUL_NONE") continue;
+
+                                float captialScore = 0f;
+
+                                captialScore += Tiles[i].Elevation;
+
+                                if (Tiles[i].Type == TileType.Grass) captialScore += 1;
+
+                                if (bestScore < captialScore)
+                                {
+                                    bestScore = captialScore;
+
+                                    _x = x;
+                                    _y = y;
+                                }
+                            }
+                        }
+
+                        if (_x >= 0 && _y >= 0)
+                        {
+                            SetTileOwner(_x, _y, culture.CultureId);
                         }
                     }
                 }
@@ -165,7 +210,7 @@ namespace ER
 
                 public void SetTileOwner(int x, int y, string newOwner)
                 {
-                    if (x < 0 || x >= Width || y < 0 || y >= Height) return;
+                    if (x < 0 || x >= Width || y < 0 || y >= Height || cultureManager.GetCulture(newOwner) == null) return;
 
                     int i = y * Width + x;
 

@@ -7,6 +7,7 @@ namespace ER
     {
         using Core;
         using Configs;
+        using Simulation;
 
         [RequireComponent(typeof(SpriteRenderer))]
         public class UnitVisual : MonoBehaviour
@@ -26,6 +27,8 @@ namespace ER
 
             private MainConfig mainConfig;
 
+            private SimulationManager simulationManager;
+
             void Awake()
             {
                 SpriteRenderer = GetComponent<SpriteRenderer>();
@@ -34,6 +37,10 @@ namespace ER
             void Start()
             {
                 mainConfig = CoreManager.MainConfig;
+
+                simulationManager = CoreManager.SimulationManager;
+
+                simulationManager.OnTick += UpdateBlink;
             }
 
             void Update()
@@ -59,8 +66,6 @@ namespace ER
                 else
                 {
                     transform.position = targetPos;
-
-                    UpdateBlink();
                 }
             }
 
@@ -127,9 +132,9 @@ namespace ER
                 }
             }
 
-            private void UpdateBlink()
+            private void UpdateBlink(float delta)
             {
-                BlinkTimer += Time.deltaTime;
+                BlinkTimer += delta;
 
                 if (!IsBlinking)
                 {

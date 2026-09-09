@@ -86,6 +86,8 @@ namespace ER
                 TileManager.Initialize();
 
                 TileVisualManager.Initialize();
+
+                UnitManager.Initialize();
             }
         }
     }
