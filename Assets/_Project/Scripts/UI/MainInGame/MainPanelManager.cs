@@ -112,7 +112,7 @@ namespace ER
 
                         string text = culture.CultureDefeated ? "A ruins of defeated nation. The death of civilization. Inevitable, sad or joyful, it doesn't matter anymore." : culture.CultureDescription;
 
-                        CultureDescriptionText.SetText($"{text} | {culture.CultureTraits.Count}");
+                        CultureDescriptionText.SetText($"{text}");
                         
                         CultureDescriptionText.color = color;
                     }

@@ -13,13 +13,13 @@ namespace ER
             public Vector2 TargetPosition {get; set;}
             public bool HasTarget => TargetPosition != Position;
 
+            public UnitVisual UnitVisual {get; set;}
+
             public float Health {get; set;}
             public float MaxHealth {get; protected set;}
 
             public float Speed {get; set;}
             public float MaxSpeed {get; protected set;}
-            public float AccelerationRate {get; set;} = 2f;
-            public float DecelerationRate {get; protected set;} = 3f;
 
             public string CultureId {get; set;}
 
@@ -41,16 +41,6 @@ namespace ER
 
             public virtual void Update(float delta)
             {
-                if (HasTarget)
-                {
-                    Speed = Mathf.Min(MaxSpeed, Speed + AccelerationRate * delta);
-
-                    MoveTowardsTarget(delta);
-                }
-                else if (Speed > 0)
-                {
-                    Speed = Mathf.Max(0, Speed - DecelerationRate * delta);
-                }
             }
 
             public virtual void MoveTowardsTarget(float delta)
@@ -105,6 +95,16 @@ namespace ER
             public virtual void ChangeHealth(float health)
             {
                 Health = Mathf.Clamp(Health + health, 0, MaxHealth);
+            }
+
+            public virtual void TakeDamage(float damage)
+            {
+                ChangeHealth(-damage);
+            }
+
+            public virtual void Heal(float health)
+            {
+                ChangeHealth(health);
             }
         }
     }

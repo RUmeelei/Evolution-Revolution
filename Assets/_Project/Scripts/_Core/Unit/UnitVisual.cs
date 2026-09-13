@@ -43,22 +43,22 @@ namespace ER
                 simulationManager.OnTick += UpdateBlink;
             }
 
+            void OnDestroy()
+            {
+                simulationManager.OnTick -= UpdateBlink;
+            }
+
             void Update()
             {
-                if (Unit == null)
-                {
-                    Destroy(gameObject);
+                if (Unit == null || !Unit.IsAlive) return;
 
-                    return;
-                }
-                
                 Vector3 targetPos = new Vector3(Unit.Position.x, Unit.Position.y, 0);
                 Vector3 currentPos = transform.position;
-
+        
                 if (Vector3.Distance(currentPos, targetPos) > 0.01f)
                 {
                     Vector2 direction = (targetPos - currentPos).normalized;
-
+        
                     UpdateDirection(direction);
 
                     transform.position = Vector3.Lerp(currentPos, targetPos, mainConfig.UnitSmoothSpeed * Time.deltaTime);

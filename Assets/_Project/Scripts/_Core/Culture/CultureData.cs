@@ -19,6 +19,8 @@ namespace ER
 
             public Color CultureColor;
 
+            public Vector2Int CultureCapital;
+
             public Dictionary<string, CultureTraitData> CultureTraits = new Dictionary<string, CultureTraitData>();
 
             public bool HasTrait(string traitId)
@@ -59,6 +61,13 @@ namespace ER
                 }
                 
                 return total;
+            }
+
+            public void SetCultureCapital(Vector2Int pos)
+            {
+                if (pos == null) return;
+                
+                CultureCapital = pos;
             }
 
             public override string ToString()

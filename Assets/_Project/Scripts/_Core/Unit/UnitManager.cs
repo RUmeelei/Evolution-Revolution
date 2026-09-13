@@ -6,12 +6,14 @@ namespace ER
     namespace Unit
     {
         using Core;
+        using Configs;
         using Simulation;
         using Culture;
+        using World.Tiles;
 
         public class UnitManager : MonoBehaviour
         {
-            public static UnitManager Instance { get; private set; }
+            public static UnitManager Instance {get; private set;}
 
             [Header("Main")]
             public bool EnableLogging;
@@ -27,8 +29,11 @@ namespace ER
 
             private int NextUnitId = 1;
 
+            private MainConfig mainConfig;
+
             private SimulationManager simulationManager;
             private CultureManager cultureManager;
+            private TileManager tileManager;
 
             void Awake()
             {
@@ -56,11 +61,20 @@ namespace ER
                     SpritesByCulture[es.Ethnicity] = es;
                 }
 
+                mainConfig = CoreManager.MainConfig;
+
                 simulationManager = CoreManager.SimulationManager;
 
                 simulationManager.OnTick += ProcessUnitTick;
 
                 cultureManager = CoreManager.CultureManager;
+
+                tileManager = CoreManager.TileManager;
+            }
+
+            void OnDestroy()
+            {
+                simulationManager.OnTick -= ProcessUnitTick;
             }
 
             public void Initialize()
@@ -69,7 +83,7 @@ namespace ER
 
                 foreach (var culture in cultures)
                 {
-                    Vector2 position = new Vector2(5f, 5f);
+                    Vector2 position = tileManager.GetTileCenter(culture.CultureCapital.x, culture.CultureCapital.y);
 
                     CreateHuman($"Name {culture.CultureName}", $"Last Name {culture.CultureName}", 0, position, culture.CultureId);
                 }
@@ -125,6 +139,8 @@ namespace ER
                 var view = viewGO.GetComponent<UnitVisual>();
 
                 view.Initialize(unit, sprites);
+
+                unit.UnitVisual = view;
             }
 
             private void AddUnit(Unit unit)
@@ -169,23 +185,64 @@ namespace ER
                 Units.Remove(unit);
 
                 UnitsDictionary.Remove(id);
-            }
-            
-            public void UpdateUnits(float delta)
-            {
-                foreach (var unit in Units)
-                {
-                    unit.Update(delta);
-                }
+
+                if (unit.UnitVisual != null) Destroy(unit.UnitVisual.gameObject);
             }
 
             private void ProcessUnitTick(float delta)
             {
+                List<Unit> deadUnits = new List<Unit>();
+
                 foreach (var unit in Units)
                 {
+                    if (!unit.IsAlive)
+                    {
+                        deadUnits.Add(unit);
+
+                        continue;
+                    }
+
                     unit.Update(delta);
 
-                    if (!unit.HasTarget && Random.value > 0.9f) unit.SetTarget(new Vector2(Random.Range(-2f, 2f), Random.Range(-2f, 2f)));
+                    // Movement
+
+                    if (unit.HasTarget)
+                    {
+                        unit.Speed = Mathf.Min(unit.MaxSpeed, unit.Speed + mainConfig.UnitAccelerationRate * delta);
+
+                        unit.MoveTowardsTarget(delta);
+                    }
+                    else if (unit.Speed > 0)
+                    {
+                        unit.Speed = Mathf.Max(0, unit.Speed - mainConfig.UnitDecelerationRate * delta);
+                    }
+
+                    // Targeting
+
+                    if (!unit.HasTarget && Random.value > 0.9f)
+                    {
+                        Vector2 target = unit.Position + new Vector2(Random.Range(-2f, 2f), Random.Range(-2f, 2f));
+
+                        float maxWidth = tileManager.WorldWidth * mainConfig.TileSize;
+                        float maxHeight = tileManager.WorldHeight * mainConfig.TileSize;
+
+                        target.x = Mathf.Clamp(target.x, 0, maxWidth);
+                        target.y = Mathf.Clamp(target.y, 0, maxHeight);
+
+                        unit.SetTarget(target);
+                    }
+
+                    // Debug
+
+                    // if (Random.value > 0.95f)
+                    // {
+                    //     unit.TakeDamage(50f);
+                    // }
+                }
+
+                foreach (var dead in deadUnits)
+                {
+                    RemoveUnit(dead.UnitId);
                 }
             }
         }

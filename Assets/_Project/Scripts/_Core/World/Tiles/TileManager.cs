@@ -32,6 +32,9 @@ namespace ER
                 private int Width;
                 private int Height;
 
+                public int WorldWidth => Width;
+                public int WorldHeight => Height;
+
                 void Awake()
                 {
                     if (transform.parent != null)
@@ -66,6 +69,7 @@ namespace ER
                     mainConfig = CoreManager.MainConfig;
 
                     cultureManager = CoreManager.CultureManager;
+
                     tileVisualManager = CoreManager.TileVisualManager;
 
                     Width = WorldCreationData.WorldSize;
@@ -139,11 +143,18 @@ namespace ER
                         if (_x >= 0 && _y >= 0)
                         {
                             SetTileOwner(_x, _y, culture.CultureId);
+
+                            culture.SetCultureCapital(new Vector2Int(_x, _y));
                         }
                     }
                 }
 
                 public TileData GetTile(int x, int y) => Tiles[y * Width + x];
+
+                public Vector2 GetTileCenter(int x, int y)
+                {
+                    return new Vector2(x * mainConfig.TileSize + mainConfig.TileSize / 2f, y * mainConfig.TileSize + mainConfig.TileSize / 2f);
+                }
 
                 public List<TileData> GetNeighboringTiles(int x, int y)
                 {

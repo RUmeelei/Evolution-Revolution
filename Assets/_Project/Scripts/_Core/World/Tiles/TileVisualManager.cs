@@ -107,6 +107,8 @@ namespace ER
                     
                     BaseTilemap.ClearAllTiles();
                     OwnerTilemap.ClearAllTiles();
+                    // StrategicTilemap.ClearAllTiles();
+                    // WTFTilemap.ClearAllTiles();
                     
                     for (int y = 0; y < WorldCreationData.WorldSize; y++)
                     {
@@ -209,7 +211,7 @@ namespace ER
 
                         tileColor = tile.Owner != "CUL_NONE" ? cultureManager.GetCulture(tile.Owner).CultureColor : Color.white;
 
-                        tileColor.a = tile.Owner != "CUL_NONE" ? 0.5f : 0.2f;
+                        tileColor.a = tile.Owner != "CUL_NONE" ? 0.8f : 0.2f;
      
                         OwnerTilemap.SetTile(tilePos, tileBase);
                         OwnerTilemap.SetColor(tilePos, tileColor);

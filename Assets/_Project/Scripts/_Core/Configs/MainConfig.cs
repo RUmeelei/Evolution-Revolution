@@ -33,6 +33,8 @@ namespace ER
 
             [Header("Units")]
             public float UnitSmoothSpeed;
+            public float UnitAccelerationRate;
+            public float UnitDecelerationRate;
         }
     }
 }
