@@ -91,6 +91,8 @@ namespace ER
                 TileVisualManager.Initialize();
 
                 UnitManager.Initialize();
+
+                SelectionManager.Initialize();
             }
         }
     }

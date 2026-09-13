@@ -8,6 +8,7 @@ namespace ER
         using Core;
         using Configs;
         using Simulation;
+        using Controls;
 
         [RequireComponent(typeof(SpriteRenderer))]
         public class UnitVisual : MonoBehaviour
@@ -28,6 +29,7 @@ namespace ER
             private MainConfig mainConfig;
 
             private SimulationManager simulationManager;
+            private SelectionManager selectionManager;
 
             void Awake()
             {
@@ -41,6 +43,8 @@ namespace ER
                 simulationManager = CoreManager.SimulationManager;
 
                 simulationManager.OnTick += UpdateBlink;
+
+                selectionManager = CoreManager.SelectionManager;
             }
 
             void OnDestroy()
@@ -67,6 +71,8 @@ namespace ER
                 {
                     transform.position = targetPos;
                 }
+
+                SpriteRenderer.color = selectionManager.SelectedUnits.Contains(Unit) ? Color.green : Color.white;
             }
 
             public void Initialize(Unit unit, UnitSpriteSet sprites)

@@ -14,6 +14,7 @@ namespace ER
             // using Government;
             using Culture;
             using Resources;
+            using Controls;
 
             public class TileVisualManager : MonoBehaviour
             {
@@ -41,6 +42,7 @@ namespace ER
 
                 private CultureManager cultureManager;
                 private TileManager tileManager;
+                private SelectionManager selectionManager;
 
                 private MainConfig mainConfig;
 
@@ -68,6 +70,8 @@ namespace ER
                 void Start()
                 {
                     cultureManager = CoreManager.CultureManager;
+
+                    selectionManager = CoreManager.SelectionManager;
                 }
 
                 void OnDestroy()
@@ -200,7 +204,7 @@ namespace ER
      
                     brightness = Mathf.Clamp01(brightness);
      
-                    tileColor = new Color(brightness, brightness, brightness);
+                    tileColor = selectionManager.SelectedTiles.Contains(new Vector2Int(x, y)) ? Color.green : new Color(brightness, brightness, brightness);
      
                     BaseTilemap.SetTile(tilePos, tileBase);
                     BaseTilemap.SetColor(tilePos, tileColor);

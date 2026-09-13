@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -26,6 +27,8 @@ namespace ER
 
                 private CultureManager cultureManager;
                 private TileVisualManager tileVisualManager;
+
+                public event Action<int, int> OnTileChanged;
 
                 private TileData[] Tiles;
 
@@ -97,9 +100,9 @@ namespace ER
                             {
                                 Type = TileType.Grass,
 
-                                Elevation = Random.Range(0f, 10f),
+                                Elevation = UnityEngine.Random.Range(0f, 10f),
 
-                                Variation = Random.Range(0, 15),
+                                Variation = UnityEngine.Random.Range(0, 15),
 
                                 Owner = "CUL_NONE",
                             };
@@ -149,6 +152,28 @@ namespace ER
                     }
                 }
 
+                public TileData WorldToTile(Vector2 worldPos)
+                {
+                    int x = Mathf.FloorToInt(worldPos.x / mainConfig.TileSize);
+                    int y = Mathf.FloorToInt(worldPos.y / mainConfig.TileSize);
+
+                    x = Mathf.Clamp(x, 0, Width - 1);
+                    y = Mathf.Clamp(y, 0, Height - 1);
+
+                    return GetTile(x, y);
+                }
+
+                public Vector2Int WorldToTilePos(Vector2 worldPos)
+                {
+                    int x = Mathf.FloorToInt(worldPos.x / mainConfig.TileSize);
+                    int y = Mathf.FloorToInt(worldPos.y / mainConfig.TileSize);
+
+                    x = Mathf.Clamp(x, 0, Width - 1);
+                    y = Mathf.Clamp(y, 0, Height - 1);
+
+                    return new Vector2Int(x, y);
+                }
+
                 public TileData GetTile(int x, int y) => Tiles[y * Width + x];
 
                 public Vector2 GetTileCenter(int x, int y)
@@ -174,6 +199,13 @@ namespace ER
                     return tiles;
                 }
 
+                public void NotifyTileChanged(int x, int y)
+                {
+                    OnTileChanged?.Invoke(x, y);
+                    
+                    if (OnTileChanged == null) tileVisualManager.MarkTileDirty(x, y);
+                }
+
                 public void SetTileType(int x, int y, TileType newType)
                 {
                     if (x < 0 || x >= Width || y < 0 || y >= Height) return;
@@ -186,7 +218,7 @@ namespace ER
 
                     Tiles[i] = tile;
 
-                    tileVisualManager.MarkTileDirty(x, y);
+                    NotifyTileChanged(x, y);
                 }
 
                 public void SetTileElevation(int x, int y, float newElevation)
@@ -201,7 +233,7 @@ namespace ER
 
                     Tiles[i] = tile;
 
-                    tileVisualManager.MarkTileDirty(x, y);
+                    NotifyTileChanged(x, y);
                 }
 
                 public void SetTileVariation(int x, int y, int newVariation)
@@ -216,7 +248,7 @@ namespace ER
 
                     Tiles[i] = tile;
 
-                    tileVisualManager.MarkTileDirty(x, y);
+                    NotifyTileChanged(x, y);
                 }
 
                 public void SetTileOwner(int x, int y, string newOwner)
@@ -231,7 +263,7 @@ namespace ER
 
                     Tiles[i] = tile;
 
-                    tileVisualManager.MarkTileDirty(x, y);
+                    NotifyTileChanged(x, y);
                 }
             }
         }
