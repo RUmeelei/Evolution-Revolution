@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 using System.Collections.Generic;
 
 namespace ER
@@ -56,6 +57,10 @@ namespace ER
 
             void Update()
             {
+                bool isOverUI = EventSystem.current.IsPointerOverGameObject();
+
+                if (isOverUI) return;
+
                 if (Input.GetMouseButtonUp(0))
                 {
                     Vector2 mousePos = Cam.ScreenToWorldPoint(Input.mousePosition);
@@ -72,12 +77,18 @@ namespace ER
                     {
                         SelectTile(mousePos, isShift);
                     }
+                    else
+                    {
+                        ClearTiles();
+
+                        if (SelectedUnits.Count > 0) SelectedUnits.Clear();
+                    }
                 }
             }
 
             private void SelectUnits(List<Unit> units, bool isShift)
             {
-                if (SelectedTiles.Count > 0) ClearTiles();
+                ClearTiles();
 
                 if (!isShift) SelectedUnits.Clear();
 
@@ -96,14 +107,30 @@ namespace ER
 
                 Vector2Int tile = tileManager.WorldToTilePos(mousePos);
 
-                if (SelectedTiles.Contains(tile)) SelectedTiles.Remove(tile);
-                else SelectedTiles.Add(tile);
+                if (SelectedTiles.Contains(tile)) RemoveTile(tile);
+                else AddTile(tile);
                 
                 RefreshSelectedTiles();
             }
 
+            private void AddTile(Vector2Int tile)
+            {
+                SelectedTiles.Add(tile);
+
+                RefreshTile(tile);
+            }
+
+            private void RemoveTile(Vector2Int tile)
+            {
+                SelectedTiles.Remove(tile);
+
+                RefreshTile(tile);
+            }
+
             private void ClearTiles()
             {
+                if (SelectedTiles.Count <= 0) return;
+
                 var oldTiles = new List<Vector2Int>(SelectedTiles);
 
                 SelectedTiles.Clear();
@@ -120,6 +147,11 @@ namespace ER
                 {
                     tileManager.NotifyTileChanged(tile.x, tile.y);
                 }
+            }
+
+            private void RefreshTile(Vector2Int tile)
+            {
+                tileManager.NotifyTileChanged(tile.x, tile.y);
             }
 
             private bool IsInsideWorld(Vector2 pos)

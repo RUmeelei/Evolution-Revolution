@@ -202,8 +202,8 @@ namespace ER
                 public void NotifyTileChanged(int x, int y)
                 {
                     OnTileChanged?.Invoke(x, y);
-                    
-                    if (OnTileChanged == null) tileVisualManager.MarkTileDirty(x, y);
+                        
+                    tileVisualManager.RenderDirtyTiles();
                 }
 
                 public void SetTileType(int x, int y, TileType newType)

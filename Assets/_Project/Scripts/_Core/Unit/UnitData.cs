@@ -66,6 +66,8 @@ namespace ER
             public virtual void SetTarget(Vector2 target)
             {
                 TargetPosition = target;
+
+                Speed *= 0.2f;
             }
 
             public virtual void Stop()

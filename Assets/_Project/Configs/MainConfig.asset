@@ -59,4 +59,4 @@ MonoBehaviour:
   MaxStartTraits: 2
   UnitSmoothSpeed: 10
   UnitAccelerationRate: 1
-  UnitDecelerationRate: 1
+  UnitDecelerationRate: 4

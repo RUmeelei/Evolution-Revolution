@@ -76,7 +76,7 @@ namespace ER
 
                 void OnDestroy()
                 {
-                    
+                    tileManager.OnTileChanged -= MarkTileDirty;
                 }
 
                 void Update()
@@ -101,6 +101,8 @@ namespace ER
                     mainConfig = CoreManager.MainConfig;
 
                     tileManager = CoreManager.TileManager;
+
+                    tileManager.OnTileChanged += MarkTileDirty;
 
                     RenderWorld();
                 }
@@ -147,7 +149,7 @@ namespace ER
                     }
                 }
 
-                private void RenderDirtyTiles()
+                public void RenderDirtyTiles()
                 {
                     if (DirtyTiles.Count == 0 || tileManager == null) return;
 
