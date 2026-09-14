@@ -99,6 +99,11 @@ namespace ER
                 Health = Mathf.Clamp(Health + health, 0, MaxHealth);
             }
 
+            public virtual float GetCurrentHealthPercent()
+            {
+                return MaxHealth > 0 ? Health / MaxHealth : 0f;
+            }
+
             public virtual void TakeDamage(float damage)
             {
                 ChangeHealth(-damage);

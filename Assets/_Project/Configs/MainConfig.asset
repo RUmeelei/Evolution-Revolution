@@ -58,5 +58,6 @@ MonoBehaviour:
   MinStartTraits: 1
   MaxStartTraits: 2
   UnitSmoothSpeed: 10
-  UnitAccelerationRate: 1
-  UnitDecelerationRate: 4
+  UnitAccelerationRate: 0.25
+  UnitDecelerationRate: 1
+  SelectionDragThreshold: 0

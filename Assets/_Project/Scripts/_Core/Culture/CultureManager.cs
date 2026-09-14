@@ -135,6 +135,13 @@ namespace ER
                 return Cultures.FirstOrDefault(c => c.CultureName == name);
             }
 
+            public PlayerData GetPlayerForCulture(string cultureId)
+            {
+                var player = playerManager.GetActivePlayers().Find(p => p.PlayerCulture.CultureId == cultureId);
+
+                return player;
+            }
+
             public List<CultureData> GetActiveCultures()
             {
                 return Cultures.Where(c => !c.CultureDefeated).ToList();
@@ -286,7 +293,7 @@ namespace ER
                     float foodInfluence = 0f;
                     float traitInfluence = 0f;
 
-                    var players = playerManager.GetAllPlayers();
+                    var players = playerManager.GetActivePlayers();
 
                     foreach (var player in players)
                     {

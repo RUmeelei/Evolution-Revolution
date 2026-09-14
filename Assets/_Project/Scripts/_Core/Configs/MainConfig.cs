@@ -35,6 +35,9 @@ namespace ER
             public float UnitSmoothSpeed;
             public float UnitAccelerationRate;
             public float UnitDecelerationRate;
+
+            [Header("Selection")]
+            public float SelectionDragThreshold;
         }
     }
 }

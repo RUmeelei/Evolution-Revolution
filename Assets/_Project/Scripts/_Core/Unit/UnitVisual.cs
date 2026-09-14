@@ -8,6 +8,7 @@ namespace ER
         using Core;
         using Configs;
         using Simulation;
+        using Culture;
         using Controls;
 
         [RequireComponent(typeof(SpriteRenderer))]
@@ -29,6 +30,7 @@ namespace ER
             private MainConfig mainConfig;
 
             private SimulationManager simulationManager;
+            private CultureManager cultureManager;
             private SelectionManager selectionManager;
 
             void Awake()
@@ -43,6 +45,8 @@ namespace ER
                 simulationManager = CoreManager.SimulationManager;
 
                 simulationManager.OnTick += UpdateBlink;
+
+                cultureManager = CoreManager.CultureManager;
 
                 selectionManager = CoreManager.SelectionManager;
             }
@@ -72,7 +76,9 @@ namespace ER
                     transform.position = targetPos;
                 }
 
-                SpriteRenderer.color = selectionManager.SelectedUnits.Contains(Unit) ? Color.green : Color.white;
+                var player = cultureManager.GetPlayerForCulture(Unit.CultureId);
+
+                SpriteRenderer.color = selectionManager.SelectedUnits.Contains(Unit) ? player == null || player.PlayerAI ? Color.blue : Color.green : new Color(1f * Unit.GetCurrentHealthPercent(), 1f * Unit.GetCurrentHealthPercent(), 1f * Unit.GetCurrentHealthPercent());
             }
 
             public void Initialize(Unit unit, UnitSpriteSet sprites)

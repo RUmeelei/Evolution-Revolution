@@ -9,6 +9,7 @@ namespace ER
         using Configs;
         using Simulation;
         using Culture;
+        using Players;
         using World.Tiles;
 
         public class UnitManager : MonoBehaviour
@@ -29,6 +30,7 @@ namespace ER
 
             private int NextUnitId = 1;
 
+            private AIConfig aiConfig;
             private MainConfig mainConfig;
 
             private SimulationManager simulationManager;
@@ -60,6 +62,16 @@ namespace ER
                 {
                     SpritesByCulture[es.Ethnicity] = es;
                 }
+            }
+
+            void OnDestroy()
+            {
+                simulationManager.OnTick -= ProcessUnitTick;
+            }
+
+            public void Initialize()
+            {
+                aiConfig = CoreManager.AIConfig;
 
                 mainConfig = CoreManager.MainConfig;
 
@@ -70,15 +82,7 @@ namespace ER
                 cultureManager = CoreManager.CultureManager;
 
                 tileManager = CoreManager.TileManager;
-            }
 
-            void OnDestroy()
-            {
-                simulationManager.OnTick -= ProcessUnitTick;
-            }
-
-            public void Initialize()
-            {
                 var cultures = cultureManager.GetActiveCultures();
 
                 foreach (var culture in cultures)
@@ -202,13 +206,15 @@ namespace ER
                         continue;
                     }
 
+                    var player = cultureManager.GetPlayerForCulture(unit.CultureId);
+
                     unit.Update(delta);
 
                     // Movement
 
                     if (unit.HasTarget)
                     {
-                        unit.Speed = Mathf.Min(unit.MaxSpeed, unit.Speed + mainConfig.UnitAccelerationRate * delta);
+                        unit.Speed = Mathf.Min(unit.MaxSpeed * unit.GetCurrentHealthPercent(), unit.Speed + (mainConfig.UnitAccelerationRate * delta * unit.GetCurrentHealthPercent()));
 
                         unit.MoveTowardsTarget(delta);
                     }
@@ -218,25 +224,27 @@ namespace ER
                     }
 
                     // Targeting
-
-                    if (!unit.HasTarget && Random.value > 0.9f)
+                    if (aiConfig.IsAIEnabled)
                     {
-                        Vector2 target = unit.Position + new Vector2(Random.Range(-2f, 2f), Random.Range(-2f, 2f));
+                        if (!unit.HasTarget && (player == null || player.PlayerAI) && Random.value > 0.9f)
+                        {
+                            Vector2 target = unit.Position + new Vector2(Random.Range(-2f, 2f), Random.Range(-2f, 2f));
 
-                        float maxWidth = tileManager.WorldWidth * mainConfig.TileSize;
-                        float maxHeight = tileManager.WorldHeight * mainConfig.TileSize;
+                            float maxWidth = tileManager.WorldWidth * mainConfig.TileSize;
+                            float maxHeight = tileManager.WorldHeight * mainConfig.TileSize;
 
-                        target.x = Mathf.Clamp(target.x, 0, maxWidth);
-                        target.y = Mathf.Clamp(target.y, 0, maxHeight);
+                            target.x = Mathf.Clamp(target.x, 0, maxWidth);
+                            target.y = Mathf.Clamp(target.y, 0, maxHeight);
 
-                        unit.SetTarget(target);
+                            unit.SetTarget(target);
+                        }
                     }
 
                     // Debug
 
                     // if (Random.value > 0.95f)
                     // {
-                    //     unit.TakeDamage(50f);
+                    //     unit.TakeDamage(5f);
                     // }
                 }
 

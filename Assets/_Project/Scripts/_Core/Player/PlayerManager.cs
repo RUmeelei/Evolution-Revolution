@@ -163,7 +163,16 @@ namespace ER
                 return player;
             }
 
-            public List<PlayerData> GetAllPlayers() => Players;
+            public CultureData GetCultureForPlayer(string playerId)
+            {
+                var player = GetPlayer(playerId);
+
+                return cultureManager.GetCulture(player.PlayerCulture.CultureId);
+            }
+
+            public List<PlayerData> GetActivePlayers() => Players;
+
+            public Dictionary<string, PlayerData> GetAllPlayers() => PlayersDictionary;
 
             private void GatherSeason(float delta)
             {

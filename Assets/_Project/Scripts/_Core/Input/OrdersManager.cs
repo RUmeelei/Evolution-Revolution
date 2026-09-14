@@ -9,6 +9,7 @@ namespace ER
         using Core;
         using Configs;
         using Unit;
+        using Culture;
         using World;
         using World.Tiles;
 
@@ -19,6 +20,7 @@ namespace ER
             [Header("Main")]
             [SerializeField] private Camera Cam;
 
+            private CultureManager cultureManager;
             private TileManager tileManager;
             private UnitManager unitManager;
             private SelectionManager selectionManager;
@@ -46,6 +48,8 @@ namespace ER
 
             public void Initialize()
             {
+                cultureManager = CoreManager.CultureManager;
+
                 tileManager = CoreManager.TileManager;
 
                 unitManager = CoreManager.UnitManager;
@@ -57,7 +61,7 @@ namespace ER
 
             public void Update()
             {
-                bool isOverUI = EventSystem.current.IsPointerOverGameObject();
+                bool isOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
 
                 if (isOverUI) return;
 
@@ -81,6 +85,10 @@ namespace ER
                 {
                     foreach (var unit in units)
                     {
+                        var player = cultureManager.GetPlayerForCulture(unit.CultureId);
+
+                        if (player == null || player.PlayerAI) continue;
+
                         unit.SetTarget(mousePos);
                     }
                 }
