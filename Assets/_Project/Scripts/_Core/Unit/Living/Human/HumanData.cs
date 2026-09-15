@@ -32,20 +32,13 @@ namespace ER
                 if (!string.IsNullOrEmpty(lastName)) LastName = lastName;
             }
 
-            public void ChangeAge(int age)
-            {
-                Age = Mathf.Max(0, Age + age);
-            }
-
-            public void AddItem(string item)
-            {
-                Inventory.Add(item);
-            }
-
-            public bool RemoveItem(string item)
-            {
-                return Inventory.Remove(item);
-            }
+            public override int GetAge() => Age;
+            public override void SetAge(int amount) => Age = Mathf.Max(0, amount);
+            public override void ChangeAge(int amount) => Age = Mathf.Max(0, Age + amount);
+    
+            public override List<string> GetInventory() => Inventory;
+            public override void AddItem(string item) => Inventory.Add(item);
+            public override void RemoveItem(string item) => Inventory.Remove(item);
         }
     }
 }

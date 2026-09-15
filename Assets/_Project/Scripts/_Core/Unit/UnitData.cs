@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 namespace ER
 {
@@ -113,6 +114,28 @@ namespace ER
             {
                 ChangeHealth(health);
             }
+
+            public virtual float GetStamina() => 0f;
+            public virtual float GetCurrentStaminaPercent() => 0f;
+            public virtual void SetStamina(float amount) {}
+            public virtual void ChangeStamina(float amount) {}
+
+            public virtual float GetMorale() => 0f;
+            public virtual float GetCurrentMoralePercent() => 0f;
+            public virtual void SetMorale(float amount) {}
+            public virtual void ChangeMorale(float amount) {}
+            
+            public virtual float GetHunger() => 0f;
+            public virtual void SetHunger(float amount) {}
+            public virtual void ChangeHunger(float amount) {}
+            
+            public virtual int GetAge() => 0;
+            public virtual void SetAge(int age) {}
+            public virtual void ChangeAge(int age) {}
+
+            public virtual List<string> GetInventory() => null;
+            public virtual void AddItem(string item) {}
+            public virtual void RemoveItem(string item) {}
         }
     }
 }

@@ -107,6 +107,13 @@ namespace ER
                     IsDragThresholdMet = false;
                     HideSelectionBox();
                 }
+
+                if (Input.GetKeyDown(KeyCode.Escape))
+                {
+                    SelectedUnits.Clear();
+
+                    ClearTiles();
+                }
             }
 
             private void HandleSingleClick()
@@ -136,52 +143,41 @@ namespace ER
             private void HandleDrag()
             {
                 Vector2 worldStart = Cam.ScreenToWorldPoint(DragStartPos);
+
                 Vector2 worldEnd = Cam.ScreenToWorldPoint(DragEndPos);
-                
+
                 float minX = Mathf.Min(worldStart.x, worldEnd.x);
                 float maxX = Mathf.Max(worldStart.x, worldEnd.x);
+
                 float minY = Mathf.Min(worldStart.y, worldEnd.y);
                 float maxY = Mathf.Max(worldStart.y, worldEnd.y);
-            
+
                 Rect worldRect = new Rect(minX, minY, maxX - minX, maxY - minY);
-            
+
                 bool isShift = Input.GetKey(KeyCode.LeftShift);
-                
+
                 if (!isShift)
                 {
                     SelectedUnits.Clear();
 
                     ClearTiles();
                 }
-                
-                List<Unit> allUnits = unitManager.GetAllUnits(); 
-                List<Unit> newSelection = new List<Unit>();
-            
+
+                List<Unit> allUnits = unitManager.GetAllUnits();
+
                 foreach (var unit in allUnits)
                 {
                     if (unit == null) continue;
-                    
+
                     if (worldRect.Contains(unit.Position))
                     {
                         var player = cultureManager.GetPlayerForCulture(unit.CultureId);
-                        
+
                         if (player != null && !player.PlayerAI)
                         {
-                            if (!SelectedUnits.Contains(unit)) newSelection.Add(unit);
+                            if (!SelectedUnits.Contains(unit)) SelectedUnits.Add(unit);
                         }
                     }
-                }
-                
-                if (isShift)
-                {
-                    foreach (var unit in newSelection)
-                    {
-                        if (!SelectedUnits.Contains(unit)) SelectedUnits.Add(unit);
-                    }
-                }
-                else
-                {
-                    SelectedUnits = newSelection;
                 }
             }
 

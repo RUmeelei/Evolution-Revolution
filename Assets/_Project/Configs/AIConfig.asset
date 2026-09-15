@@ -13,5 +13,3 @@ MonoBehaviour:
   m_Name: AIConfig
   m_EditorClassIdentifier: Assembly-CSharp::ER.Configs.AIConfig
   IsAIEnabled: 1
-  AICulturesCount: 3
-  NeutralCulturesCount: 6

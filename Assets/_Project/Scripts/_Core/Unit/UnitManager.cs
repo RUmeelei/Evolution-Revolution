@@ -34,6 +34,7 @@ namespace ER
             private MainConfig mainConfig;
 
             private SimulationManager simulationManager;
+            private DateManager dateManager;
             private CultureManager cultureManager;
             private TileManager tileManager;
 
@@ -78,6 +79,10 @@ namespace ER
                 simulationManager = CoreManager.SimulationManager;
 
                 simulationManager.OnTick += ProcessUnitTick;
+
+                dateManager = CoreManager.DateManager;
+
+                dateManager.OnTier += ProcessUnitAging;
 
                 cultureManager = CoreManager.CultureManager;
 
@@ -251,6 +256,16 @@ namespace ER
                 foreach (var dead in deadUnits)
                 {
                     RemoveUnit(dead.UnitId);
+                }
+            }
+
+            private void ProcessUnitAging(float delta)
+            {
+                foreach (var unit in Units)
+                {
+                    if (!unit.IsAlive) continue;
+
+                    unit.ChangeAge(1);
                 }
             }
         }
