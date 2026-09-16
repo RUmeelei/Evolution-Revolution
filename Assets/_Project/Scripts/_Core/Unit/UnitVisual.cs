@@ -54,7 +54,7 @@ namespace ER
                     Unit = null;
                 }
 
-                simulationManager.OnTick -= UpdateBlink;
+                if (simulationManager != null) simulationManager.OnTick -= UpdateBlink;
             }
 
             void Update()
@@ -95,6 +95,8 @@ namespace ER
                 Unit.OnPositionChanged += OnUnitPositionChanged;
                 Unit.OnHealthChanged += OnUnitHealthChanged;
                 Unit.OnDied += OnUnitDied;
+
+                simulationManager.OnTick += UpdateBlink;
             }
 
             private void OnUnitPositionChanged(Vector2 position)
@@ -150,10 +152,10 @@ namespace ER
                     Unit = null;
                 }
 
-                simulationManager.OnTick -= UpdateBlink;
+                if (simulationManager != null) simulationManager.OnTick -= UpdateBlink;
 
                 SpriteRenderer.color = Color.white;
-                
+
                 gameObject.SetActive(false);
             }
 

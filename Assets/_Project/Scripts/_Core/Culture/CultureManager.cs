@@ -21,6 +21,8 @@ namespace ER
 
             private int NextCultureId = 1;
 
+            [SerializeField] private List<CultureTrait> CultureTraitsList;
+
             public List<CultureData> Cultures = new List<CultureData>();
             private Dictionary<string, CultureData> CulturesDictionary = new Dictionary<string, CultureData>();
 
@@ -76,18 +78,11 @@ namespace ER
 
             private void LoadTraitsFromResources()
             {
-                string[] guids = UnityEditor.AssetDatabase.FindAssets("t:CultureTrait");
-    
-                foreach (string guid in guids)
+                foreach (var trait in CultureTraitsList)
                 {
-                    string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
-
-                    CultureTrait trait = UnityEditor.AssetDatabase.LoadAssetAtPath<CultureTrait>(path);
-
                     if (trait != null && !CultureTraitTemplatesDictionary.ContainsKey(trait.TraitId))
                     {
                         CultureTraitTemplates.Add(trait);
-
                         CultureTraitTemplatesDictionary.Add(trait.TraitId, trait);
                     }
                 }

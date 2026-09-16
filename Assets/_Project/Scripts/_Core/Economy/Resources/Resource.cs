@@ -5,7 +5,7 @@ namespace ER
     namespace Resources
     {
         [CreateAssetMenu(fileName = "NewResource", menuName = "ER/Resource")]
-        public class CultureTrait : ScriptableObject
+        public class Resource : ScriptableObject
         {
             public string ResourceId;
             public string ResourceName;

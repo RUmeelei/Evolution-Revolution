@@ -24,6 +24,8 @@ namespace ER
             public List<PlayerData> Players = new List<PlayerData>();
             private Dictionary<string, PlayerData> PlayersDictionary = new Dictionary<string, PlayerData>();
 
+            private Dictionary<string, PlayerData> PlayersByCulture = new Dictionary<string, PlayerData>();
+
             private SimulationManager simulationManager;
             private DateManager dateManager;
             private ResourceManager resourceManager;
@@ -153,6 +155,8 @@ namespace ER
 
                 player.PlayerCulture = culture;
 
+                PlayersByCulture[cultureId] = player;
+
                 Debug.Log($"Attached {culture.CultureName} culture to {player.PlayerName}");
             }
 
@@ -163,11 +167,11 @@ namespace ER
                 return player;
             }
 
-            public CultureData GetCultureForPlayer(string playerId)
+            public PlayerData GetPlayerForCulture(string cultureId)
             {
-                var player = GetPlayer(playerId);
-
-                return cultureManager.GetCulture(player.PlayerCulture.CultureId);
+                PlayersByCulture.TryGetValue(cultureId, out var player);
+                
+                return player;
             }
 
             public List<PlayerData> GetActivePlayers() => Players;
@@ -227,6 +231,8 @@ namespace ER
                 if (player == null || player.PlayerDefeated) return;
 
                 player.PlayerDefeated = true;
+
+                if (player.PlayerCulture != null) PlayersByCulture.Remove(player.PlayerCulture.CultureId);
 
                 Debug.Log($"{player.PlayerName} has been defeated");
             }

@@ -2931,8 +2931,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ER.Culture.CultureManager
   EnableLogging: 0
+  CultureTraitsList: []
   Cultures: []
-  CultureTraitTemplates: []
+  CultureTraitTemplates:
+  - {fileID: 11400000, guid: e75bbede933f51644b543ba11e358712, type: 2}
+  - {fileID: 11400000, guid: 292dd996def06524eb7f49985af4f21c, type: 2}
+  - {fileID: 11400000, guid: 074889b983dbdea48a6a34d18f0e517b, type: 2}
 --- !u!1 &1653343465
 GameObject:
   m_ObjectHideFlags: 0
