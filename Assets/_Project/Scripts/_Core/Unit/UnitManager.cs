@@ -20,7 +20,6 @@ namespace ER
             public bool EnableLogging;
 
             [Header("Visual")]
-            [SerializeField] private GameObject UnitVisualPrefab;
             [SerializeField] private CultureSprites[] CultureSprites;
 
             private Dictionary<UnitEthnicity, CultureSprites> SpritesByCulture = new();
@@ -37,6 +36,7 @@ namespace ER
             private DateManager dateManager;
             private CultureManager cultureManager;
             private TileManager tileManager;
+            private UnitVisualPoolManager unitVisualPoolManager;
 
             void Awake()
             {
@@ -88,6 +88,8 @@ namespace ER
 
                 tileManager = CoreManager.TileManager;
 
+                unitVisualPoolManager = CoreManager.UnitVisualPoolManager;
+
                 var cultures = cultureManager.GetActiveCultures();
 
                 foreach (var culture in cultures)
@@ -107,10 +109,14 @@ namespace ER
 
             private UnitSpriteSet GetSpritesForUnit(Unit unit)
             {
-                UnitEthnicity cultureEthnicity = CultureCreationData.CultureEthnicity;
+                var culture = cultureManager.GetCulture(unit.CultureId);
 
-                SpritesByCulture.TryGetValue(cultureEthnicity, out var sprites);
+                if (culture == null) return null;
+                
+                UnitEthnicity ethnicity = culture.CultureEthnicity;
 
+                SpritesByCulture.TryGetValue(ethnicity, out var sprites);
+                
                 if (sprites == null) return null;
 
                 return unit switch
@@ -135,21 +141,18 @@ namespace ER
             
             private void CreateUnitVisual(Unit unit)
             {
-                if (UnitVisualPrefab == null) return;
-
                 var sprites = GetSpritesForUnit(unit);
 
                 if (sprites == null) return;
-
-                GameObject viewGO = Instantiate(UnitVisualPrefab);
                 
-                viewGO.name = $"{unit.UnitName}_View";
+                UnitVisual view = unitVisualPoolManager.Get();
 
-                var view = viewGO.GetComponent<UnitVisual>();
+                if (view != null)
+                {
+                    view.gameObject.name = $"{unit.UnitName}_View";
 
-                view.Initialize(unit, sprites);
-
-                unit.UnitVisual = view;
+                    view.Initialize(unit, sprites);
+                }
             }
 
             private void AddUnit(Unit unit)
@@ -194,8 +197,6 @@ namespace ER
                 Units.Remove(unit);
 
                 UnitsDictionary.Remove(id);
-
-                if (unit.UnitVisual != null) Destroy(unit.UnitVisual.gameObject);
             }
 
             private void ProcessUnitTick(float delta)

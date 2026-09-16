@@ -7,16 +7,58 @@ namespace ER
     {
         public abstract class Unit
         {
+            public event System.Action<Vector2> OnPositionChanged;
+            public event System.Action<float> OnHealthChanged;
+            public event System.Action OnDied;
+
             public string UnitId {get; protected set;}
             public string UnitName {get; protected set;}
 
-            public Vector2 Position {get; set;}
-            public Vector2 TargetPosition {get; set;}
+            private Vector2 _position;
+            public Vector2 Position
+            {
+                get => _position;
+
+                set
+                {
+                    if (_position != value)
+                    {
+                        _position = value;
+
+                        OnPositionChanged?.Invoke(_position);
+                    }
+                }
+            }
+
+            private Vector2 _targetPosition;
+            public Vector2 TargetPosition
+            {
+                get => _targetPosition;
+
+                set => _targetPosition = value;
+            }
             public bool HasTarget => TargetPosition != Position;
 
             public UnitVisual UnitVisual {get; set;}
 
-            public float Health {get; set;}
+            private float _health;
+            public float Health
+            {
+                get => _health;
+
+                set
+                {
+                    float oldHealth = _health;
+                    _health = Mathf.Clamp(value, 0, MaxHealth);
+
+                    if (oldHealth != _health)
+                    {
+                        OnHealthChanged?.Invoke(_health);
+
+                        if (_health <= 0 && oldHealth > 0) OnDied?.Invoke();
+                    }
+                }
+            }
             public float MaxHealth {get; protected set;}
 
             public float Speed {get; set;}

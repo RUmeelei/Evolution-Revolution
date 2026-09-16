@@ -41,6 +41,7 @@ namespace ER
             public static TileManager TileManager {get; private set;}
             public static TileVisualManager TileVisualManager {get; private set;}
             public static UnitManager UnitManager {get; private set;}
+            public static UnitVisualPoolManager UnitVisualPoolManager {get; private set;}
             public static SelectionManager SelectionManager {get; private set;}
             public static OrdersManager OrdersManager {get; private set;}
             public static DatePanelManager DatePanelManager {get; private set;}
@@ -57,6 +58,7 @@ namespace ER
             public static void RegisterTileManager(TileManager manager) => TileManager = manager;
             public static void RegisterTileVisualManager(TileVisualManager manager) => TileVisualManager = manager;
             public static void RegisterUnitManager(UnitManager manager) => UnitManager = manager;
+            public static void RegisterUnitVisualPoolManager(UnitVisualPoolManager manager) => UnitVisualPoolManager = manager;
             public static void RegisterSelectionManager(SelectionManager manager) => SelectionManager = manager;
             public static void RegisterOrdersManager(OrdersManager manager) => OrdersManager = manager;
             public static void RegisterDatePanelManager(DatePanelManager manager) => DatePanelManager = manager;
@@ -91,6 +93,8 @@ namespace ER
                 TileManager.Initialize();
 
                 TileVisualManager.Initialize();
+
+                UnitVisualPoolManager.Initialize();
 
                 UnitManager.Initialize();
 

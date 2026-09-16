@@ -60,4 +60,5 @@ MonoBehaviour:
   UnitSmoothSpeed: 10
   UnitAccelerationRate: 0.25
   UnitDecelerationRate: 1
-  SelectionDragThreshold: 0
+  UnitVisualInitialSize: 500
+  SelectionDragThreshold: 50

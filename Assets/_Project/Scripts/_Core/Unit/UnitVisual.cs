@@ -30,8 +30,7 @@ namespace ER
             private MainConfig mainConfig;
 
             private SimulationManager simulationManager;
-            private CultureManager cultureManager;
-            private SelectionManager selectionManager;
+            private UnitVisualPoolManager unitVisualPoolManager;
 
             void Awake()
             {
@@ -41,32 +40,34 @@ namespace ER
             void Start()
             {
                 mainConfig = CoreManager.MainConfig;
-
-                simulationManager = CoreManager.SimulationManager;
-
-                simulationManager.OnTick += UpdateBlink;
-
-                cultureManager = CoreManager.CultureManager;
-
-                selectionManager = CoreManager.SelectionManager;
+                
+                unitVisualPoolManager = CoreManager.UnitVisualPoolManager;
             }
 
             void OnDestroy()
             {
+                if (Unit != null)
+                {
+                    Unit.OnPositionChanged -= OnUnitPositionChanged;
+                    Unit.OnHealthChanged -= OnUnitHealthChanged;
+                    Unit.OnDied -= OnUnitDied;
+                    Unit = null;
+                }
+
                 simulationManager.OnTick -= UpdateBlink;
             }
 
             void Update()
             {
-                if (Unit == null || !Unit.IsAlive) return;
-
+                if (Unit == null) return;
+                
                 Vector3 targetPos = new Vector3(Unit.Position.x, Unit.Position.y, 0);
                 Vector3 currentPos = transform.position;
-        
+
                 if (Vector3.Distance(currentPos, targetPos) > 0.01f)
                 {
                     Vector2 direction = (targetPos - currentPos).normalized;
-        
+
                     UpdateDirection(direction);
 
                     transform.position = Vector3.Lerp(currentPos, targetPos, mainConfig.UnitSmoothSpeed * Time.deltaTime);
@@ -75,14 +76,12 @@ namespace ER
                 {
                     transform.position = targetPos;
                 }
-
-                var player = cultureManager.GetPlayerForCulture(Unit.CultureId);
-
-                SpriteRenderer.color = selectionManager.SelectedUnits.Contains(Unit) ? player == null || player.PlayerAI ? Color.blue : Color.green : new Color(1f * Unit.GetCurrentHealthPercent(), 1f * Unit.GetCurrentHealthPercent(), 1f * Unit.GetCurrentHealthPercent());
             }
 
             public void Initialize(Unit unit, UnitSpriteSet sprites)
             {
+                simulationManager = CoreManager.SimulationManager;
+
                 Unit = unit;
 
                 Sprites = sprites;
@@ -92,6 +91,70 @@ namespace ER
                 SetDirection(UnitSpriteDirection.Down);
 
                 BlinkTimer = Random.Range(0f, BlinkInterval);
+                
+                Unit.OnPositionChanged += OnUnitPositionChanged;
+                Unit.OnHealthChanged += OnUnitHealthChanged;
+                Unit.OnDied += OnUnitDied;
+            }
+
+            private void OnUnitPositionChanged(Vector2 position)
+            {
+                
+            }
+
+            private void OnUnitHealthChanged(float health)
+            {
+                if (health < 30) SpriteRenderer.color = Color.red;
+                else SpriteRenderer.color = Color.white;
+            }
+
+            private void OnUnitDied()
+            {
+                StartCoroutine(DeathAnimation());
+            }
+
+            private System.Collections.IEnumerator DeathAnimation()
+            {
+                if (this == null || !gameObject.activeInHierarchy) yield break;
+
+                float timer = 0f;
+                float duration = 0.5f;
+
+                Color startColor = SpriteRenderer.color;
+
+                while (timer < duration)
+                {
+                    timer += Time.deltaTime;
+
+                    float t = timer / duration;
+
+                    Color color = startColor;
+
+                    color.a = Mathf.Lerp(1f, 0f, t);
+
+                    SpriteRenderer.color = color;
+
+                    yield return null;
+                }
+
+                if (unitVisualPoolManager != null) unitVisualPoolManager.Return(this);
+            }
+
+            public void Release()
+            {
+                if (Unit != null)
+                {
+                    Unit.OnPositionChanged -= OnUnitPositionChanged;
+                    Unit.OnHealthChanged -= OnUnitHealthChanged;
+                    Unit.OnDied -= OnUnitDied;
+                    Unit = null;
+                }
+
+                simulationManager.OnTick -= UpdateBlink;
+
+                SpriteRenderer.color = Color.white;
+                
+                gameObject.SetActive(false);
             }
 
             public void UpdateSprites(UnitSpriteSet newSprites)

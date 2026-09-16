@@ -17,6 +17,8 @@ namespace ER
             public float CultureIdentity;
             public bool CultureDefeated;
 
+            public Unit.UnitEthnicity CultureEthnicity;
+
             public Color CultureColor;
 
             public Vector2Int CultureCapital;
