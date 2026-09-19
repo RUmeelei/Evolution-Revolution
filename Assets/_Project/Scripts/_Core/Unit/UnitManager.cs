@@ -27,6 +27,8 @@ namespace ER
             private List<Unit> Units = new List<Unit>();
             private Dictionary<string, Unit> UnitsDictionary = new Dictionary<string, Unit>();
 
+            private List<Unit> DeadUnits = new List<Unit>();
+
             private int NextUnitId = 1;
 
             private AIConfig aiConfig;
@@ -201,13 +203,13 @@ namespace ER
 
             private void ProcessUnitTick(float delta)
             {
-                List<Unit> deadUnits = new List<Unit>();
-
+                DeadUnits.Clear();
+                
                 foreach (var unit in Units)
                 {
                     if (!unit.IsAlive)
                     {
-                        deadUnits.Add(unit);
+                        DeadUnits.Add(unit);
 
                         continue;
                     }
@@ -254,7 +256,7 @@ namespace ER
                     // }
                 }
 
-                foreach (var dead in deadUnits)
+                foreach (var dead in DeadUnits)
                 {
                     RemoveUnit(dead.UnitId);
                 }

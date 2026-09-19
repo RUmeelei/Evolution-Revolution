@@ -31,6 +31,7 @@ namespace ER
 
             private SimulationManager simulationManager;
             private UnitVisualPoolManager unitVisualPoolManager;
+            private SelectionManager selectionManager;
 
             void Awake()
             {
@@ -76,11 +77,15 @@ namespace ER
                 {
                     transform.position = targetPos;
                 }
+
+                SpriteRenderer.color = selectionManager.SelectedUnits.Contains(Unit) ? Color.green : Unit.GetCurrentHealthPercent() < 0.3f ? Color.red : Color.white;
             }
 
             public void Initialize(Unit unit, UnitSpriteSet sprites)
             {
                 simulationManager = CoreManager.SimulationManager;
+
+                selectionManager = CoreManager.SelectionManager;
 
                 Unit = unit;
 
@@ -106,8 +111,7 @@ namespace ER
 
             private void OnUnitHealthChanged(float health)
             {
-                if (health < 30) SpriteRenderer.color = Color.red;
-                else SpriteRenderer.color = Color.white;
+                
             }
 
             private void OnUnitDied()
