@@ -5,6 +5,8 @@ namespace ER
 {
     namespace Unit
     {
+        using Politics.Diplomacy;
+
         public static class UnitCombatSystem
         {
             public static bool IsEnemy(Unit attacker, Unit target)
@@ -13,7 +15,13 @@ namespace ER
 
                 if (!target.IsAlive) return false;
                 
-                return attacker.CultureId != target.CultureId;
+                if (attacker.CultureId == target.CultureId) return false;
+                
+                var diplomacy = DiplomacyManager.Instance;
+
+                if (diplomacy == null) return false;
+
+                return diplomacy.IsAtWar(attacker.CultureId, target.CultureId);
             }
             
             public static Unit FindNearestEnemy(Unit attacker, List<Unit> candidates)
@@ -59,7 +67,7 @@ namespace ER
                 if (!attacker.IsAttackReady) return;
 
                 float damage = CalculateDamage(attacker, target);
-                
+
                 target.TakeDamage(damage);
 
                 attacker.MarkAttackPerformed(target);

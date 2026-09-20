@@ -12,6 +12,8 @@ namespace ER
         using Culture;
         using Resources;
         using Players;
+        using Politics;
+        using Politics.Diplomacy;
         using World;
         using World.Tiles;
         using Unit;
@@ -39,6 +41,7 @@ namespace ER
             public static CultureManager CultureManager {get; private set;}
             public static ResourceManager ResourceManager {get; private set;}
             public static PlayerManager PlayerManager {get; private set;}
+            public static DiplomacyManager DiplomacyManager {get; private set;}
             public static WorldGeneratorManager WorldGeneratorManager {get; private set;}
             public static TileManager TileManager {get; private set;}
             public static TileVisualManager TileVisualManager {get; private set;}
@@ -56,6 +59,7 @@ namespace ER
             public static void RegisterCultureManager(CultureManager manager) => CultureManager = manager;
             public static void RegisterResourceManager(ResourceManager manager) => ResourceManager = manager;
             public static void RegisterPlayerManager(PlayerManager manager) => PlayerManager = manager;
+            public static void RegisterDiplomacyManager(DiplomacyManager manager) => DiplomacyManager = manager;
             public static void RegisterWorldGeneratorManager(WorldGeneratorManager manager) => WorldGeneratorManager = manager;
             public static void RegisterTileManager(TileManager manager) => TileManager = manager;
             public static void RegisterTileVisualManager(TileVisualManager manager) => TileVisualManager = manager;
@@ -89,6 +93,8 @@ namespace ER
                 CultureManager.Initialize();
 
                 PlayerManager.Initialize();
+
+                DiplomacyManager.Initialize();
 
                 WorldGeneratorManager.Initialize();
 

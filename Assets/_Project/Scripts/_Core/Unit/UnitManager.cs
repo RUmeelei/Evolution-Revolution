@@ -40,7 +40,12 @@ namespace ER
             private CultureManager cultureManager;
             private TileManager tileManager;
             private UnitVisualPoolManager unitVisualPoolManager;
+            private PlayerManager playerManager;
+
             private UnitSpatialGrid unitSpatialGrid;
+
+            private float worldWidth;
+            private float worldHeight;
 
             void Awake()
             {
@@ -95,9 +100,11 @@ namespace ER
                 tileManager = CoreManager.TileManager;
 
                 unitVisualPoolManager = CoreManager.UnitVisualPoolManager;
+                
+                playerManager = CoreManager.PlayerManager;
 
-                float worldWidth = tileManager.WorldWidth * mainConfig.TileSize;
-                float worldHeight = tileManager.WorldHeight * mainConfig.TileSize;
+                worldWidth = tileManager.WorldWidth * mainConfig.TileSize;
+                worldHeight = tileManager.WorldHeight * mainConfig.TileSize;
 
                 unitSpatialGrid = new UnitSpatialGrid(worldWidth, worldHeight, mainConfig.TileSize * 4f);
 
@@ -215,60 +222,51 @@ namespace ER
 
             private void ProcessUnitTick(float delta)
             {
-                List<Unit> deadUnits = new List<Unit>();
+                DeadUnits.Clear();
 
                 foreach (var unit in Units)
                 {
                     if (!unit.IsAlive)
                     {
-                        deadUnits.Add(unit);
+                        DeadUnits.Add(unit);
 
                         continue;
                     }
 
-                    var player = cultureManager.GetPlayerForCulture(unit.CultureId);
-
                     unit.Update(delta);
 
-                    // Combat
-                    
                     unit.UpdateCombatCooldown(delta);
                     
-                    if (unit.CanAttack)
+                    // AI
+
+                    if (aiConfig.IsAIEnabled)
                     {
-                        if (unit.AttackTarget != null)
+                        UnitAISystem.ProcessUnit(unit, aiConfig, unitSpatialGrid, cultureManager, playerManager, worldWidth, worldHeight);
+                    }
+                    
+                    // Combat
+
+                    if (unit.AttackTarget != null)
+                    {
+                        if (!unit.AttackTarget.IsAlive)
                         {
-                            if (!unit.AttackTarget.IsAlive)
-                            {
-                                unit.ClearAttackTarget();
-                            }
-                            else
-                            {
-                                float distToTarget = Vector2.Distance(unit.Position, unit.AttackTarget.Position);
-
-                                if (distToTarget <= unit.AttackRange)
-                                {
-                                    unit.Stop();
-
-                                    UnitCombatSystem.PerformAttack(unit, unit.AttackTarget);
-                                }
-                                else
-                                {
-                                    unit.SetTarget(unit.AttackTarget.Position);
-                                }
-                            }
+                            unit.ClearAttackTarget();
                         }
                         else
                         {
-                            if (player == null || player.PlayerAI)
+                            float distToTarget = Vector2.Distance(unit.Position, unit.AttackTarget.Position);
+
+                            if (distToTarget <= unit.AttackRange)
                             {
-                                var candidates = unitSpatialGrid.GetUnitsInRadius(unit.Position, combatConfig.AggroRadius);
+                                unit.Stop();
 
-                                Unit enemy = UnitCombatSystem.FindNearestEnemy(unit, candidates);
-
-                                if (enemy != null)
+                                UnitCombatSystem.PerformAttack(unit, unit.AttackTarget);
+                            }
+                            else
+                            {
+                                if (!unit.HasTarget || Vector2.Distance(unit.TargetPosition, unit.AttackTarget.Position) > 0.3f)
                                 {
-                                    unit.AttackTarget = enemy;
+                                    unit.SetTarget(unit.AttackTarget.Position);
                                 }
                             }
                         }
@@ -280,7 +278,17 @@ namespace ER
                     {
                         Vector2 oldPosition = unit.Position;
 
-                        unit.Speed = Mathf.Min(unit.MaxSpeed * unit.GetCurrentHealthPercent(), unit.Speed + (mainConfig.UnitAccelerationRate * delta * unit.GetCurrentHealthPercent()));
+                        float healthPercent = unit.GetCurrentHealthPercent();
+
+                        float healthFactor = combatConfig.MinHealthSpeedFactor + (1f - combatConfig.MinHealthSpeedFactor) * healthPercent;
+                        
+                        float adrenalineMultiplier = (healthPercent < combatConfig.AdrenalineHealthThreshold) ? combatConfig.AdrenalineSpeedMultiplier : 1f;
+
+                        float effectiveMaxSpeed = unit.MaxSpeed * healthFactor * adrenalineMultiplier;
+
+                        float effectiveAcceleration = mainConfig.UnitAccelerationRate * delta * healthFactor * adrenalineMultiplier;
+
+                        unit.Speed = Mathf.Min(effectiveMaxSpeed, unit.Speed + effectiveAcceleration);
 
                         unit.MoveTowardsTarget(delta);
 
@@ -290,27 +298,9 @@ namespace ER
                     {
                         unit.Speed = Mathf.Max(0, unit.Speed - mainConfig.UnitDecelerationRate * delta);
                     }
-
-                    // AI
-
-                    if (aiConfig.IsAIEnabled)
-                    {
-                        if (!unit.HasTarget && unit.AttackTarget == null && (player == null || player.PlayerAI) && Random.value > 0.9f)
-                        {
-                            Vector2 target = unit.Position + new Vector2(Random.Range(-2f, 2f), Random.Range(-2f, 2f));
-
-                            float maxWidth = tileManager.WorldWidth * mainConfig.TileSize;
-                            float maxHeight = tileManager.WorldHeight * mainConfig.TileSize;
-
-                            target.x = Mathf.Clamp(target.x, 0, maxWidth);
-                            target.y = Mathf.Clamp(target.y, 0, maxHeight);
-
-                            unit.SetTarget(target);
-                        }
-                    }
                 }
 
-                foreach (var dead in deadUnits)
+                foreach (var dead in DeadUnits)
                 {
                     RemoveUnit(dead.UnitId);
                 }

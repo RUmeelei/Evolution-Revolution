@@ -111,9 +111,25 @@ namespace ER
 
             public virtual void SetTarget(Vector2 target)
             {
-                TargetPosition = target;
+                Vector2 currentDir = HasTarget ? (TargetPosition - Position).normalized : Vector2.zero;
 
-                Speed *= 0.9f;
+                Vector2 newDir = (target - Position).sqrMagnitude > 0.001f ? (target - Position).normalized : Vector2.zero;
+
+                TargetPosition = target;
+                
+                if (currentDir != Vector2.zero && newDir != Vector2.zero)
+                {
+                    float dot = Vector2.Dot(currentDir, newDir);
+
+                    if (dot < -0.5f)
+                    {
+                        Speed *= 0.1f;
+                    }
+                    else
+                    {
+                        Speed *= 0.9f;
+                    }
+                }
             }
 
             public virtual void Stop()
@@ -181,6 +197,10 @@ namespace ER
             public virtual List<string> GetInventory() => null;
             public virtual void AddItem(string item) {}
             public virtual void RemoveItem(string item) {}
+
+            // AI
+
+            public UnitAIState AIState {get; set;} = UnitAIState.Idle;
 
             // Combat
 

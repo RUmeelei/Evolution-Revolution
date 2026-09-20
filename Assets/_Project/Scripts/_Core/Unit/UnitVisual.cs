@@ -84,7 +84,23 @@ namespace ER
                     transform.position = targetPos;
                 }
 
-                if (!IsAttackFlashing) SpriteRenderer.color = Unit.IsSelected ? Color.green : CultureColor;
+                if (!IsAttackFlashing)
+                {
+                    if (Unit.IsSelected)
+                    {
+                        SpriteRenderer.color = Color.green;
+                    }
+                    else if (Unit.GetCurrentHealthPercent() < 0.4f)
+                    {
+                        float pulse = Mathf.PingPong(Time.time * 3f, 1f);
+
+                        SpriteRenderer.color = Color.Lerp(CultureColor, Color.white, pulse * 0.5f);
+                    }
+                    else
+                    {
+                        SpriteRenderer.color = CultureColor;
+                    }
+                }
             }
 
             public void Initialize(Unit unit, UnitSpriteSet sprites)

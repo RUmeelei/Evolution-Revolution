@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: CombatConfig
   m_EditorClassIdentifier: Assembly-CSharp::ER.Configs.CombatConfig
   BaseAttackDamage: 10
-  BaseAttackRange: 1.5
+  BaseAttackRange: 0.5
   BaseAttackCooldown: 1
   AggroRadius: 2
   EnableCombatLogging: 0

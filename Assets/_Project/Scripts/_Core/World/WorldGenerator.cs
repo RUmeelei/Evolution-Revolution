@@ -84,7 +84,8 @@ namespace ER
                     var culture = cultureManager.CreateCulture(
                         cultureName: CultureCreationData.Name,
                         cultureDescription: CultureCreationData.Description,
-                        cultureColor: CultureCreationData.Color
+                        cultureColor: color
+                        // cultureColor: CultureCreationData.Color
                     );
 
                     cultureManager.AddRandomTraits(culture.CultureId);

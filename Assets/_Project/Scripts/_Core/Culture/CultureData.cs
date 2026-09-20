@@ -23,6 +23,8 @@ namespace ER
 
             public Vector2Int CultureCapital;
 
+            public Vector2 RallyPoint {get; set;}
+
             public Dictionary<string, CultureTraitData> CultureTraits = new Dictionary<string, CultureTraitData>();
 
             public bool HasTrait(string traitId)
