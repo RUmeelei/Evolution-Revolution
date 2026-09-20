@@ -265,6 +265,54 @@ namespace ER
 
                     NotifyTileChanged(x, y);
                 }
+
+                public void UpdateTileData(int x, int y, TileData newData)
+                {
+                    if (x < 0 || x >= Width || y < 0 || y >= Height) return;
+
+                    int i = y * Width + x;
+
+                    Tiles[i] = newData;
+
+                    NotifyTileChanged(x, y);
+                }
+
+                public Color GetTileOwnerColor(int x, int y)
+                {
+                    if (x < 0 || x >= Width || y < 0 || y >= Height) return Color.clear;
+
+                    var tile = GetTile(x, y);
+
+                    if (tile.Owner == "CUL_NONE") return Color.clear;
+
+                    var culture = cultureManager.GetCulture(tile.Owner);
+
+                    if (culture == null) return Color.clear;
+
+                    return culture.CultureColor;
+                }
+
+                public float GetTileCaptureProgress(int x, int y)
+                {
+                    if (x < 0 || x >= Width || y < 0 || y >= Height) return 0f;
+                
+                    return GetTile(x, y).CaptureProgress;
+                }
+
+                public Color GetTileCaptureColor(int x, int y)
+                {
+                    if (x < 0 || x >= Width || y < 0 || y >= Height) return Color.clear;
+
+                    var tile = GetTile(x, y);
+
+                    if (string.IsNullOrEmpty(tile.CapturingCultureId)) return Color.clear;
+
+                    var culture = cultureManager.GetCulture(tile.CapturingCultureId);
+                    
+                    if (culture == null) return Color.clear;
+
+                    return culture.CultureColor;
+                }
             }
         }
     }

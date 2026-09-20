@@ -8,11 +8,11 @@ namespace ER
         using Configs;
         using Culture;
         using Players;
+        using World.Tiles;
         
         public static class UnitAISystem
         {
-            public static void ProcessUnit(Unit unit, AIConfig aiConfig, UnitSpatialGrid grid,
-                CultureManager cultureManager, PlayerManager playerManager, float worldWidth, float worldHeight)
+            public static void ProcessUnit(Unit unit, AIConfig aiConfig, UnitSpatialGrid grid, CultureManager cultureManager, PlayerManager playerManager, TileManager tileManager, float worldWidth, float worldHeight)
             {
                 if (unit == null || !unit.IsAlive) return;
                 
@@ -52,7 +52,7 @@ namespace ER
                     return;
                 }
 
-                WanderOrMoveToRally(unit, aiConfig, cultureManager, worldWidth, worldHeight);
+                WanderOrMoveToRally(unit, aiConfig, cultureManager, tileManager, worldWidth, worldHeight);
             }
             
             private static bool ShouldFlee(Unit unit, AIConfig aiConfig)
@@ -155,12 +155,12 @@ namespace ER
                 }
             }
 
-            private static void WanderOrMoveToRally(Unit unit, AIConfig aiConfig,
-                CultureManager cultureManager, float worldWidth, float worldHeight)
+            private static void WanderOrMoveToRally(Unit unit, AIConfig aiConfig, CultureManager cultureManager, TileManager tileManager, float worldWidth, float worldHeight)
             {
                 if (Random.value > 0.1f) return;
 
                 var culture = cultureManager.GetCulture(unit.CultureId);
+
                 if (culture == null) return;
 
                 Vector2 rallyPoint = culture.RallyPoint;
@@ -184,14 +184,25 @@ namespace ER
                     }
                     else
                     {
-                        Vector2 target = unit.Position + new Vector2(Random.Range(-aiConfig.WanderRadius, aiConfig.WanderRadius), Random.Range(-aiConfig.WanderRadius, aiConfig.WanderRadius));
+                        Vector2 captureTarget = FindNeutralTileToCapture(unit, tileManager);
 
-                        target.x = Mathf.Clamp(target.x, 0, worldWidth);
-                        target.y = Mathf.Clamp(target.y, 0, worldHeight);
+                        if (captureTarget != Vector2.zero)
+                        {
+                            unit.SetTarget(captureTarget);
 
-                        unit.SetTarget(target);
+                            unit.AIState = UnitAIState.Wandering;
+                        }
+                        else
+                        {
+                            Vector2 target = unit.Position + new Vector2(Random.Range(-aiConfig.WanderRadius, aiConfig.WanderRadius), Random.Range(-aiConfig.WanderRadius, aiConfig.WanderRadius));
 
-                        unit.AIState = UnitAIState.Wandering;
+                            target.x = Mathf.Clamp(target.x, 0, worldWidth);
+                            target.y = Mathf.Clamp(target.y, 0, worldHeight);
+
+                            unit.SetTarget(target);
+
+                            unit.AIState = UnitAIState.Wandering;
+                        }
                     }
                 }
                 else
@@ -205,6 +216,47 @@ namespace ER
 
                     unit.AIState = UnitAIState.Wandering;
                 }
+            }
+            
+            private static Vector2 FindNeutralTileToCapture(Unit unit, TileManager tileManager)
+            {
+                Vector2Int unitTilePos = tileManager.WorldToTilePos(unit.Position);
+                
+                int searchRadius = 3;
+
+                Vector2 bestTarget = Vector2.zero;
+                float bestDist = float.MaxValue;
+
+                for (int dy = -searchRadius; dy <= searchRadius; dy++)
+                {
+                    for (int dx = -searchRadius; dx <= searchRadius; dx++)
+                    {
+                        int nx = unitTilePos.x + dx;
+                        int ny = unitTilePos.y + dy;
+
+                        if (nx < 0 || nx >= tileManager.WorldWidth) continue;
+                        if (ny < 0 || ny >= tileManager.WorldHeight) continue;
+
+                        var tile = tileManager.GetTile(nx, ny);
+                        
+                        if (tile.Type == TileType.Water) continue;
+
+                        if (tile.Owner != "CUL_NONE") continue;
+
+                        Vector2 tileCenter = tileManager.GetTileCenter(nx, ny);
+
+                        float dist = Vector2.Distance(unit.Position, tileCenter);
+
+                        if (dist < bestDist)
+                        {
+                            bestDist = dist;
+
+                            bestTarget = tileCenter;
+                        }
+                    }
+                }
+
+                return bestTarget;
             }
         }
     }

@@ -16,6 +16,10 @@ namespace ER
                 public int Variation;
 
                 public string Owner;
+                
+                public float CaptureProgress;
+                
+                public string CapturingCultureId;
             }
 
             public enum TileType

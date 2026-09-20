@@ -10,6 +10,7 @@ namespace ER
         using Simulation;
         using Culture;
         using Players;
+        using World;
         using World.Tiles;
 
         public class UnitManager : MonoBehaviour
@@ -28,6 +29,9 @@ namespace ER
             private Dictionary<string, Unit> UnitsDictionary = new Dictionary<string, Unit>();
 
             private List<Unit> DeadUnits = new List<Unit>();
+
+            private float СaptureDecayTimer = 0f;
+            private const float CaptureDecayInterval = 0.5f;
 
             private int NextUnitId = 1;
 
@@ -116,7 +120,9 @@ namespace ER
 
                     for (int i = 0; i < 5; i++)
                     {
-                        CreateHuman($"Name {culture.CultureName} {i}", $"Last Name {culture.CultureName} {i}", 0, position, culture.CultureId);
+                        Vector2 spawnPos = position + new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f));
+
+                        CreateHuman($"Name {culture.CultureName} {i}", $"Last Name {culture.CultureName} {i}", 0, spawnPos, culture.CultureId);
                     }
                 }
             }
@@ -241,7 +247,7 @@ namespace ER
 
                     if (aiConfig.IsAIEnabled)
                     {
-                        UnitAISystem.ProcessUnit(unit, aiConfig, unitSpatialGrid, cultureManager, playerManager, worldWidth, worldHeight);
+                        UnitAISystem.ProcessUnit(unit, aiConfig, unitSpatialGrid, cultureManager, playerManager, tileManager, worldWidth, worldHeight);
                     }
                     
                     // Combat
@@ -298,6 +304,24 @@ namespace ER
                     {
                         unit.Speed = Mathf.Max(0, unit.Speed - mainConfig.UnitDecelerationRate * delta);
                     }
+
+                    Vector2Int tilePos = tileManager.WorldToTilePos(unit.Position);
+
+                    TileData currentTile = tileManager.GetTile(tilePos.x, tilePos.y);
+                    
+                    if (currentTile.Type != TileType.Water)
+                    {
+                        TileCaptureSystem.ProcessCapture(currentTile, tilePos.x, tilePos.y, unit, tileManager, mainConfig, delta);
+                    }
+                }
+                
+                СaptureDecayTimer += delta;
+
+                if (СaptureDecayTimer >= CaptureDecayInterval)
+                {
+                    СaptureDecayTimer = 0f;
+
+                    ProcessCaptureDecay();
                 }
 
                 foreach (var dead in DeadUnits)
@@ -313,6 +337,43 @@ namespace ER
                     if (!unit.IsAlive) continue;
 
                     unit.ChangeAge(1);
+                }
+            }
+            
+            private void ProcessCaptureDecay()
+            {
+                int width = tileManager.WorldWidth;
+                int height = tileManager.WorldHeight;
+
+                for (int y = 0; y < height; y++)
+                {
+                    for (int x = 0; x < width; x++)
+                    {
+                        TileData tile = tileManager.GetTile(x, y);
+
+                        if (string.IsNullOrEmpty(tile.CapturingCultureId)) continue;
+                        
+                        Vector2 tileCenter = tileManager.GetTileCenter(x, y);
+
+                        var unitsOnTile = unitSpatialGrid.GetUnitsInRadius(tileCenter, mainConfig.TileSize * 0.5f);
+
+                        bool hasCapturer = false;
+
+                        foreach (var unit in unitsOnTile)
+                        {
+                            if (unit.IsAlive && unit.CultureId == tile.CapturingCultureId)
+                            {
+                                hasCapturer = true;
+
+                                break;
+                            }
+                        }
+                        
+                        if (!hasCapturer)
+                        {
+                            TileCaptureSystem.DecayCapture(tile, x, y, tileManager, mainConfig, CaptureDecayInterval);
+                        }
+                    }
                 }
             }
         }

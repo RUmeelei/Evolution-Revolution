@@ -11,6 +11,8 @@ namespace ER
         using Configs;
         using Simulation;
         using Players;
+        using World.Tiles;
+        using Unit;
 
         public class CultureManager : MonoBehaviour
         {
@@ -31,6 +33,11 @@ namespace ER
 
             private SimulationManager simulationManager;
             private PlayerManager playerManager;
+            private TileManager tileManager;
+            private UnitManager unitManager;
+
+            private float CultureAITimer = 0f;
+            private const float CultureAIInterval = 2f;
 
             private MainConfig mainConfig;
 
@@ -62,6 +69,10 @@ namespace ER
                 playerManager = CoreManager.PlayerManager;
 
                 playerManager.OnPlayerTick += ProcessCultureTick;
+
+                tileManager = CoreManager.TileManager;
+
+                unitManager = CoreManager.UnitManager;
             }
 
             void OnDestroy()
@@ -279,6 +290,15 @@ namespace ER
             {
                 OnCultureTick?.Invoke(delta);
 
+                CultureAITimer += delta;
+
+                if (CultureAITimer >= CultureAIInterval)
+                {
+                    CultureAITimer = 0f;
+            
+                    ProcessCultureAI();
+                }
+
                 foreach (var culture in Cultures)
                 {
                     if (culture.CultureDefeated) continue;
@@ -345,6 +365,16 @@ namespace ER
                     change -= traitInfluence;
 
                     ChangeCultureIdentity(culture.CultureId, change * delta);
+                }
+            }
+            private void ProcessCultureAI()
+            {
+                if (tileManager == null) return;
+                if (unitManager == null) return;
+
+                foreach (var culture in Cultures)
+                {
+                    CultureAISystem.ProcessCulture(culture, tileManager, playerManager, unitManager);
                 }
             }
         }

@@ -123,11 +123,7 @@ namespace ER
 
                     if (dot < -0.5f)
                     {
-                        Speed *= 0.1f;
-                    }
-                    else
-                    {
-                        Speed *= 0.9f;
+                        Speed *= 0.5f;
                     }
                 }
             }

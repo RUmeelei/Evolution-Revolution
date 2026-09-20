@@ -40,6 +40,13 @@ namespace ER
 
             [Header("Selection")]
             public float SelectionDragThreshold;
+
+            [Header("Tile Capture")]
+            [Tooltip("Tile capture speed (% per second)")]
+            public float CaptureRatePerSecond;
+
+            [Tooltip("Capture progress decay rate (% per second)")]
+            public float CaptureDecayRatePerSecond;
         }
     }
 }

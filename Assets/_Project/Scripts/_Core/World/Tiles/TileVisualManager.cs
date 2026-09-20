@@ -213,14 +213,41 @@ namespace ER
 
                     if (MapMode == 1)
                     {
-                        tileBase = GetTileVariation(BlankTiles, variation);
+                        Color layerColor = Color.clear;
 
-                        tileColor = tile.Owner != "CUL_NONE" ? cultureManager.GetCulture(tile.Owner).CultureColor : Color.white;
+                        bool isBeingCaptured = !string.IsNullOrEmpty(tile.CapturingCultureId) && tile.CaptureProgress > 0f;
 
-                        tileColor.a = tile.Owner != "CUL_NONE" ? 0.8f : 0.2f;
-     
-                        OwnerTilemap.SetTile(tilePos, tileBase);
-                        OwnerTilemap.SetColor(tilePos, tileColor);
+                        if (isBeingCaptured)
+                        {
+                            var capturingCulture = cultureManager.GetCulture(tile.CapturingCultureId);
+
+                            if (capturingCulture != null)
+                            {
+                                layerColor = capturingCulture.CultureColor;
+                                float progress01 = Mathf.Clamp01(tile.CaptureProgress / 100f);
+
+                                float minAlpha = MapMode == 1 ? 0.3f : 0.15f;
+                                float maxAlpha = MapMode == 1 ? 0.9f : 0.5f;
+
+                                layerColor.a = Mathf.Lerp(minAlpha, maxAlpha, progress01);
+                            }
+                        }
+                        else if (tile.Owner != "CUL_NONE")
+                        {
+                            var ownerCulture = cultureManager.GetCulture(tile.Owner);
+
+                            if (ownerCulture != null)
+                            {
+                                layerColor = ownerCulture.CultureColor;
+                                
+                                layerColor.a = MapMode == 1 ? 0.8f : 0.3f;
+                            }
+                        }
+
+                        TileBase ownerTileBase = GetTileVariation(BlankTiles, variation);
+
+                        OwnerTilemap.SetTile(tilePos, ownerTileBase);
+                        OwnerTilemap.SetColor(tilePos, layerColor);
                     }
                 }
 
