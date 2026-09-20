@@ -24,11 +24,13 @@ namespace ER
             public static MainConfig MainConfig => Instance?.MainCfg;
             public static SimulationConfig SimulationConfig => Instance?.SimulationCfg;
             public static AIConfig AIConfig => Instance?.AICfg;
+            public static CombatConfig CombatConfig => Instance?.CombatCfg;
             public static UIConfig UIConfig => Instance?.UICfg;
 
             [SerializeField] private MainConfig MainCfg;
             [SerializeField] private SimulationConfig SimulationCfg;
             [SerializeField] private AIConfig AICfg;
+            [SerializeField] private CombatConfig CombatCfg;
             [SerializeField] private UIConfig UICfg;
 
             public static CameraManager CameraManager {get; private set;}

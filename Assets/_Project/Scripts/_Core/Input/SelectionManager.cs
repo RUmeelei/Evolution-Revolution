@@ -108,8 +108,10 @@ namespace ER
                     HideSelectionBox();
                 }
 
-                if (Input.GetKeyDown(KeyCode.Escape))
+                if (Input.GetKeyUp(KeyCode.Escape))
                 {
+                    MarkSelected(SelectedUnits, false);
+
                     SelectedUnits.Clear();
 
                     ClearTiles();
@@ -122,7 +124,7 @@ namespace ER
 
                 bool isShift = Input.GetKey(KeyCode.LeftShift);
 
-                List<Unit> unitsAtMousePos = unitManager.GetUnitsAtPosition(mousePos, 0.1f);
+                List<Unit> unitsAtMousePos = unitManager.GetUnitsAtPosition(mousePos, 0.1f, true);
 
                 if (unitsAtMousePos.Count > 0)
                 {
@@ -136,7 +138,12 @@ namespace ER
                 {
                     ClearTiles();
 
-                    if (SelectedUnits.Count > 0) SelectedUnits.Clear();
+                    if (SelectedUnits.Count > 0)
+                    {
+                        MarkSelected(SelectedUnits, false);
+
+                        SelectedUnits.Clear();
+                    } 
                 }
             }
 
@@ -158,6 +165,8 @@ namespace ER
 
                 if (!isShift)
                 {
+                    MarkSelected(SelectedUnits, false);
+
                     SelectedUnits.Clear();
 
                     ClearTiles();
@@ -175,7 +184,12 @@ namespace ER
 
                         if (player != null && !player.PlayerAI)
                         {
-                            if (!SelectedUnits.Contains(unit)) SelectedUnits.Add(unit);
+                            if (!SelectedUnits.Contains(unit))
+                            {
+                                unit.IsSelected = true;
+
+                                SelectedUnits.Add(unit);
+                            } 
                         }
                     }
                 }
@@ -193,18 +207,38 @@ namespace ER
             {
                 ClearTiles();
 
-                if (!isShift) SelectedUnits.Clear();
+                if (!isShift)
+                {
+                    MarkSelected(SelectedUnits, false);
+
+                    SelectedUnits.Clear();
+                }
 
                 foreach (var unit in units)
                 {
-                    if (SelectedUnits.Contains(unit) && SelectedUnits.Count > 1) SelectedUnits.Remove(unit);
-                    else SelectedUnits.Add(unit);
+                    if (SelectedUnits.Contains(unit) && SelectedUnits.Count > 1)
+                    {
+                        unit.IsSelected = false;
+
+                        SelectedUnits.Remove(unit);
+                    }
+                    else
+                    {
+                        unit.IsSelected = true;
+
+                        SelectedUnits.Add(unit);
+                    } 
                 }
             }
 
             private void SelectTile(Vector2 mousePos, bool isShift)
             {
-                if (SelectedUnits.Count > 0) SelectedUnits.Clear();
+                if (SelectedUnits.Count > 0)
+                {
+                    MarkSelected(SelectedUnits, false);
+
+                    SelectedUnits.Clear();
+                } 
 
                 if (!isShift) ClearTiles();
 
@@ -309,6 +343,14 @@ namespace ER
                 float maxY = tileManager.WorldHeight * mainConfig.TileSize;
 
                 return pos.x >= 0 && pos.y >= 0 && pos.x < maxX && pos.y < maxY;
+            }
+
+            private void MarkSelected(List<Unit> units, bool selected)
+            {
+                foreach (var unit in units)
+                {
+                    unit.IsSelected = selected;
+                }
             }
         }
     }

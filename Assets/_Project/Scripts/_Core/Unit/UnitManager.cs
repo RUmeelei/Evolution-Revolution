@@ -33,12 +33,14 @@ namespace ER
 
             private AIConfig aiConfig;
             private MainConfig mainConfig;
+            private CombatConfig combatConfig;
 
             private SimulationManager simulationManager;
             private DateManager dateManager;
             private CultureManager cultureManager;
             private TileManager tileManager;
             private UnitVisualPoolManager unitVisualPoolManager;
+            private UnitSpatialGrid unitSpatialGrid;
 
             void Awake()
             {
@@ -78,6 +80,8 @@ namespace ER
 
                 mainConfig = CoreManager.MainConfig;
 
+                combatConfig = CoreManager.CombatConfig;
+
                 simulationManager = CoreManager.SimulationManager;
 
                 simulationManager.OnTick += ProcessUnitTick;
@@ -92,13 +96,21 @@ namespace ER
 
                 unitVisualPoolManager = CoreManager.UnitVisualPoolManager;
 
+                float worldWidth = tileManager.WorldWidth * mainConfig.TileSize;
+                float worldHeight = tileManager.WorldHeight * mainConfig.TileSize;
+
+                unitSpatialGrid = new UnitSpatialGrid(worldWidth, worldHeight, mainConfig.TileSize * 4f);
+
                 var cultures = cultureManager.GetActiveCultures();
 
                 foreach (var culture in cultures)
                 {
                     Vector2 position = tileManager.GetTileCenter(culture.CultureCapital.x, culture.CultureCapital.y);
 
-                    CreateHuman($"Name {culture.CultureName}", $"Last Name {culture.CultureName}", 0, position, culture.CultureId);
+                    for (int i = 0; i < 5; i++)
+                    {
+                        CreateHuman($"Name {culture.CultureName} {i}", $"Last Name {culture.CultureName} {i}", 0, position, culture.CultureId);
+                    }
                 }
             }
 
@@ -111,15 +123,9 @@ namespace ER
 
             private UnitSpriteSet GetSpritesForUnit(Unit unit)
             {
-                var culture = cultureManager.GetCulture(unit.CultureId);
-
-                if (culture == null) return null;
-                
-                UnitEthnicity ethnicity = culture.CultureEthnicity;
-
+                var ethnicity = cultureManager.GetCulture(unit.CultureId)?.CultureEthnicity ?? UnitEthnicity.European;
+                                
                 SpritesByCulture.TryGetValue(ethnicity, out var sprites);
-                
-                if (sprites == null) return null;
 
                 return unit switch
                 {
@@ -133,6 +139,8 @@ namespace ER
                 string id = $"HUM_{NextUnitId++:D4}";
 
                 var human = new Human(id, firstName, lastName, age, position, cultureId);
+
+                human.InitializeCombat(combatConfig.BaseAttackDamage, combatConfig.BaseAttackRange, combatConfig.BaseAttackCooldown);
 
                 AddUnit(human);
 
@@ -164,6 +172,8 @@ namespace ER
                 Units.Add(unit);
 
                 UnitsDictionary[unit.UnitId] = unit;
+
+                unitSpatialGrid.Register(unit);
             }
 
             public Unit GetUnit(string id)
@@ -175,9 +185,9 @@ namespace ER
 
             public List<Unit> GetAllUnits() => Units;
 
-            public List<Unit> GetUnitsAtPosition(Vector2 position, float radius = 1f)
+            public List<Unit> GetUnitsAtPosition(Vector2 position, float radius = 1f, bool single = false)
             {
-                return Units.FindAll(u => Vector2.Distance(u.Position, position) <= radius);
+                return unitSpatialGrid.GetUnitsInRadius(position, radius, single);
             }
 
             public List<Unit> GetUnitsByCulture(string cultureId)
@@ -199,17 +209,19 @@ namespace ER
                 Units.Remove(unit);
 
                 UnitsDictionary.Remove(id);
+
+                unitSpatialGrid.Unregister(unit);
             }
 
             private void ProcessUnitTick(float delta)
             {
-                DeadUnits.Clear();
-                
+                List<Unit> deadUnits = new List<Unit>();
+
                 foreach (var unit in Units)
                 {
                     if (!unit.IsAlive)
                     {
-                        DeadUnits.Add(unit);
+                        deadUnits.Add(unit);
 
                         continue;
                     }
@@ -218,23 +230,72 @@ namespace ER
 
                     unit.Update(delta);
 
+                    // Combat
+                    
+                    unit.UpdateCombatCooldown(delta);
+                    
+                    if (unit.CanAttack)
+                    {
+                        if (unit.AttackTarget != null)
+                        {
+                            if (!unit.AttackTarget.IsAlive)
+                            {
+                                unit.ClearAttackTarget();
+                            }
+                            else
+                            {
+                                float distToTarget = Vector2.Distance(unit.Position, unit.AttackTarget.Position);
+
+                                if (distToTarget <= unit.AttackRange)
+                                {
+                                    unit.Stop();
+
+                                    UnitCombatSystem.PerformAttack(unit, unit.AttackTarget);
+                                }
+                                else
+                                {
+                                    unit.SetTarget(unit.AttackTarget.Position);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (player == null || player.PlayerAI)
+                            {
+                                var candidates = unitSpatialGrid.GetUnitsInRadius(unit.Position, combatConfig.AggroRadius);
+
+                                Unit enemy = UnitCombatSystem.FindNearestEnemy(unit, candidates);
+
+                                if (enemy != null)
+                                {
+                                    unit.AttackTarget = enemy;
+                                }
+                            }
+                        }
+                    }
+
                     // Movement
 
                     if (unit.HasTarget)
                     {
+                        Vector2 oldPosition = unit.Position;
+
                         unit.Speed = Mathf.Min(unit.MaxSpeed * unit.GetCurrentHealthPercent(), unit.Speed + (mainConfig.UnitAccelerationRate * delta * unit.GetCurrentHealthPercent()));
 
                         unit.MoveTowardsTarget(delta);
+
+                        unitSpatialGrid.UpdatePosition(unit, oldPosition);
                     }
                     else if (unit.Speed > 0)
                     {
                         unit.Speed = Mathf.Max(0, unit.Speed - mainConfig.UnitDecelerationRate * delta);
                     }
 
-                    // Targeting
+                    // AI
+
                     if (aiConfig.IsAIEnabled)
                     {
-                        if (!unit.HasTarget && (player == null || player.PlayerAI) && Random.value > 0.9f)
+                        if (!unit.HasTarget && unit.AttackTarget == null && (player == null || player.PlayerAI) && Random.value > 0.9f)
                         {
                             Vector2 target = unit.Position + new Vector2(Random.Range(-2f, 2f), Random.Range(-2f, 2f));
 
@@ -247,16 +308,9 @@ namespace ER
                             unit.SetTarget(target);
                         }
                     }
-
-                    // Debug
-
-                    // if (Random.value > 0.95f)
-                    // {
-                    //     unit.TakeDamage(5f);
-                    // }
                 }
 
-                foreach (var dead in DeadUnits)
+                foreach (var dead in deadUnits)
                 {
                     RemoveUnit(dead.UnitId);
                 }

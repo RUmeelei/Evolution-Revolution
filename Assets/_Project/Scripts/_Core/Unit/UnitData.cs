@@ -41,6 +41,7 @@ namespace ER
 
             public UnitVisual UnitVisual {get; set;}
 
+            public bool IsAlive => Health > 0;
             private float _health;
             public float Health
             {
@@ -66,7 +67,9 @@ namespace ER
 
             public string CultureId {get; set;}
 
-            public bool IsAlive => Health > 0;
+            internal int GridCellIndex = -1;
+
+            public bool IsSelected {get; set;}
 
             protected Unit(string unitId, string unitName, float maxHealth, float maxSpeed, string cultureId)
             {
@@ -110,7 +113,7 @@ namespace ER
             {
                 TargetPosition = target;
 
-                Speed *= 0.2f;
+                Speed *= 0.9f;
             }
 
             public virtual void Stop()
@@ -178,6 +181,66 @@ namespace ER
             public virtual List<string> GetInventory() => null;
             public virtual void AddItem(string item) {}
             public virtual void RemoveItem(string item) {}
+
+            // Combat
+
+            public event System.Action<Unit> OnAttacked;
+
+            public virtual bool CanAttack => true;
+
+            private float baseAttackDamage;
+            private float baseAttackRange;
+            private float baseAttackCooldown;
+            
+            public float AttackDamage {get; protected set;}
+            public float AttackRange {get; protected set;}
+            public float AttackCooldown {get; protected set;}
+            
+            public Unit AttackTarget {get; set;}
+            
+            private float AttackCooldownTimer = 0f;
+            
+            public bool IsAttackReady => AttackCooldownTimer <= 0;
+
+            public void UpdateCombatCooldown(float delta)
+            {
+                if (AttackCooldownTimer > 0)
+                {
+                    AttackCooldownTimer -= delta;
+                }
+            }
+
+            public void MarkAttackPerformed(Unit target)
+            {
+                AttackCooldownTimer = AttackCooldown;
+
+                OnAttacked?.Invoke(target);
+            }
+
+            public void ClearAttackTarget()
+            {
+                AttackTarget = null;
+            }
+
+            public void InitializeCombat(float damage, float range, float cooldown)
+            {
+                baseAttackDamage = damage;
+                baseAttackRange = range;
+                baseAttackCooldown = cooldown;
+
+                RecalculateCombatStats();
+            }
+
+            public virtual void RecalculateCombatStats()
+            {
+                float damage = baseAttackDamage;
+                float range = baseAttackRange;
+                float cooldown = baseAttackCooldown;
+
+                AttackDamage = damage;
+                AttackRange = range;
+                AttackCooldown = cooldown;
+            }
         }
     }
 }

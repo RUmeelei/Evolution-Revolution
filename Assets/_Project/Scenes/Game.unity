@@ -2137,6 +2137,7 @@ MonoBehaviour:
   MainCfg: {fileID: 11400000, guid: 5fcdb2b2c2be6e84d80b96e4cb48a136, type: 2}
   SimulationCfg: {fileID: 11400000, guid: 609a480f13d623449987e0755c2eb697, type: 2}
   AICfg: {fileID: 11400000, guid: 57eeec4927adc864fbf009c7ef43c748, type: 2}
+  CombatCfg: {fileID: 11400000, guid: 655ae10090ebaa6468e6ebeb99d3aa0c, type: 2}
   UICfg: {fileID: 11400000, guid: 33c8783629b412e46842eac05c76ef28, type: 2}
 --- !u!1 &1051178323
 GameObject:

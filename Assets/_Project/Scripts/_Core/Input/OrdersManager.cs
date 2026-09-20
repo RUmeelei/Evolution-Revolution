@@ -80,14 +80,38 @@ namespace ER
             private void HandleUnitsOrder(Vector2 mousePos, bool isShift)
             {
                 var units = selectionManager.SelectedUnits;
+                
+                if (units.Count == 0) return;
+                
+                var unitsAtMousePos = unitManager.GetUnitsAtPosition(mousePos, 0.5f);
 
-                if (units.Count > 0)
+                Unit targetUnit = null;
+
+                foreach (var u in unitsAtMousePos)
                 {
-                    foreach (var unit in units)
+                    var player = cultureManager.GetPlayerForCulture(u.CultureId);
+                    
+                    if (player == null || player.PlayerAI)
                     {
-                        var player = cultureManager.GetPlayerForCulture(unit.CultureId);
+                        targetUnit = u;
 
-                        if (player == null || player.PlayerAI) continue;
+                        break;
+                    }
+                }
+
+                foreach (var unit in units)
+                {
+                    var player = cultureManager.GetPlayerForCulture(unit.CultureId);
+
+                    if (player == null || player.PlayerAI) continue;
+
+                    if (targetUnit != null)
+                    {
+                        unit.AttackTarget = targetUnit;
+                    }
+                    else
+                    {
+                        unit.ClearAttackTarget();
 
                         unit.SetTarget(mousePos);
                     }

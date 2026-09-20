@@ -21,17 +21,22 @@ namespace ER
             private Unit Unit;
             private UnitSpriteSet Sprites;
             private UnitSpriteDirection CurrentDirection = UnitSpriteDirection.Down;
+            private Color CultureColor = Color.white;
 
             private float BlinkTimer = 0f;
             private bool IsBlinking = false;
             private float BlinkInterval = 3f;
             private float BlinkDuration = 0.15f;
 
+            private bool IsAttackFlashing = false;
+            private Coroutine attackFlashCoroutine;
+
             private MainConfig mainConfig;
 
             private SimulationManager simulationManager;
             private UnitVisualPoolManager unitVisualPoolManager;
             private SelectionManager selectionManager;
+            private CultureManager cultureManager;
 
             void Awake()
             {
@@ -52,6 +57,7 @@ namespace ER
                     Unit.OnPositionChanged -= OnUnitPositionChanged;
                     Unit.OnHealthChanged -= OnUnitHealthChanged;
                     Unit.OnDied -= OnUnitDied;
+                    Unit.OnAttacked -= OnUnitAttacked;
                     Unit = null;
                 }
 
@@ -78,7 +84,7 @@ namespace ER
                     transform.position = targetPos;
                 }
 
-                SpriteRenderer.color = selectionManager.SelectedUnits.Contains(Unit) ? Color.green : Unit.GetCurrentHealthPercent() < 0.3f ? Color.red : Color.white;
+                if (!IsAttackFlashing) SpriteRenderer.color = Unit.IsSelected ? Color.green : CultureColor;
             }
 
             public void Initialize(Unit unit, UnitSpriteSet sprites)
@@ -86,6 +92,8 @@ namespace ER
                 simulationManager = CoreManager.SimulationManager;
 
                 selectionManager = CoreManager.SelectionManager;
+
+                cultureManager = CoreManager.CultureManager;
 
                 Unit = unit;
 
@@ -96,10 +104,17 @@ namespace ER
                 SetDirection(UnitSpriteDirection.Down);
 
                 BlinkTimer = Random.Range(0f, BlinkInterval);
+
+                var culture = cultureManager.GetCulture(unit.CultureId);
+
+                CultureColor = (culture != null) ? culture.CultureColor : Color.white;
+
+                SpriteRenderer.color = CultureColor;
                 
                 Unit.OnPositionChanged += OnUnitPositionChanged;
                 Unit.OnHealthChanged += OnUnitHealthChanged;
                 Unit.OnDied += OnUnitDied;
+                Unit.OnAttacked += OnUnitAttacked;
 
                 simulationManager.OnTick += UpdateBlink;
             }
@@ -116,7 +131,26 @@ namespace ER
 
             private void OnUnitDied()
             {
+                if (Unit != null)
+                {
+                    Unit.OnDied -= OnUnitDied;
+                }
+                
+                if (!gameObject.activeInHierarchy) return;
+
                 StartCoroutine(DeathAnimation());
+            }
+
+            private void OnUnitAttacked(Unit target)
+            {
+                if (!gameObject.activeInHierarchy) return;
+                
+                if (attackFlashCoroutine != null)
+                {
+                    StopCoroutine(attackFlashCoroutine);
+                }
+
+                attackFlashCoroutine = StartCoroutine(AttackFlash());
             }
 
             private System.Collections.IEnumerator DeathAnimation()
@@ -146,17 +180,47 @@ namespace ER
                 if (unitVisualPoolManager != null) unitVisualPoolManager.Return(this);
             }
 
+            private System.Collections.IEnumerator AttackFlash()
+            {
+                if (this == null || !gameObject.activeInHierarchy) yield break;
+
+                IsAttackFlashing = true;
+
+                SpriteRenderer.color = Color.yellow;
+
+                yield return new WaitForSeconds(0.15f);
+
+                IsAttackFlashing = false;
+
+                attackFlashCoroutine = null;
+
+                if (Unit != null && Unit.IsAlive)
+                {
+                    SpriteRenderer.color = Unit.IsSelected ? Color.green : CultureColor;
+                }
+            }
+
             public void Release()
             {
+                if (attackFlashCoroutine != null)
+                {
+                    StopCoroutine(attackFlashCoroutine);
+                    
+                    attackFlashCoroutine = null;
+                }
+
                 if (Unit != null)
                 {
                     Unit.OnPositionChanged -= OnUnitPositionChanged;
                     Unit.OnHealthChanged -= OnUnitHealthChanged;
                     Unit.OnDied -= OnUnitDied;
+                    Unit.OnAttacked -= OnUnitAttacked;
                     Unit = null;
                 }
 
                 if (simulationManager != null) simulationManager.OnTick -= UpdateBlink;
+
+                IsAttackFlashing = false;
 
                 SpriteRenderer.color = Color.white;
 
