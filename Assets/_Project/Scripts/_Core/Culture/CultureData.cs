@@ -24,6 +24,7 @@ namespace ER
             public Vector2Int CultureCapital;
 
             public Vector2 RallyPoint {get; set;}
+            public CultureStance Stance {get; set;} = CultureStance.Passive;
 
             public Dictionary<string, CultureTraitData> CultureTraits = new Dictionary<string, CultureTraitData>();
 

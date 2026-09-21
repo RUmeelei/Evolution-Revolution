@@ -72,6 +72,11 @@ namespace ER
                     cultureManager = CoreManager.CultureManager;
 
                     selectionManager = CoreManager.SelectionManager;
+                    
+                    if (Cam == null)
+                    {
+                        Cam = Camera.main;
+                    }
                 }
 
                 void OnDestroy()
@@ -202,6 +207,7 @@ namespace ER
                     }
      
                     float elevation = Mathf.Clamp01(tile.Elevation / 10f);
+
                     float brightness = EnableElevationDisplay ? 1f - elevation * 0.5f : 1f;
      
                     brightness = Mathf.Clamp01(brightness);
@@ -209,44 +215,62 @@ namespace ER
                     tileColor = selectionManager.SelectedTiles.Contains(new Vector2Int(x, y)) ? Color.green : new Color(brightness, brightness, brightness);
      
                     BaseTilemap.SetTile(tilePos, tileBase);
+                    
                     BaseTilemap.SetColor(tilePos, tileColor);
 
                     if (MapMode == 1)
                     {
-                        Color layerColor = Color.clear;
+                        Color layerColor = Color.white;
 
+                        float layerAlpha = 0.6f;
+                    
                         bool isBeingCaptured = !string.IsNullOrEmpty(tile.CapturingCultureId) && tile.CaptureProgress > 0f;
-
-                        if (isBeingCaptured)
-                        {
-                            var capturingCulture = cultureManager.GetCulture(tile.CapturingCultureId);
-
-                            if (capturingCulture != null)
-                            {
-                                layerColor = capturingCulture.CultureColor;
-                                float progress01 = Mathf.Clamp01(tile.CaptureProgress / 100f);
-
-                                float minAlpha = MapMode == 1 ? 0.3f : 0.15f;
-                                float maxAlpha = MapMode == 1 ? 0.9f : 0.5f;
-
-                                layerColor.a = Mathf.Lerp(minAlpha, maxAlpha, progress01);
-                            }
-                        }
-                        else if (tile.Owner != "CUL_NONE")
+                        
+                        if (tile.Owner != "CUL_NONE")
                         {
                             var ownerCulture = cultureManager.GetCulture(tile.Owner);
 
                             if (ownerCulture != null)
                             {
                                 layerColor = ownerCulture.CultureColor;
-                                
-                                layerColor.a = MapMode == 1 ? 0.8f : 0.3f;
                             }
                         }
-
+                        
+                        if (isBeingCaptured)
+                        {
+                            var capturingCulture = cultureManager.GetCulture(tile.CapturingCultureId);
+                    
+                            if (capturingCulture != null)
+                            {
+                                float progress01 = Mathf.Clamp01(tile.CaptureProgress / 100f);
+                                
+                                float smoothProgress = Mathf.SmoothStep(0f, 1f, progress01);
+                    
+                                Color targetColor = capturingCulture.CultureColor;
+                                
+                                layerColor = Color.Lerp(layerColor, targetColor, smoothProgress);
+                                
+                                layerAlpha = 0.75f; 
+                            }
+                        }
+                        else
+                        {
+                            if (tile.Owner != "CUL_NONE")
+                            {
+                                layerAlpha = 0.6f;
+                            }
+                            else
+                            {
+                                layerAlpha = 0f; 
+                            }
+                        }
+                        
+                        layerColor.a = layerAlpha;
+                    
                         TileBase ownerTileBase = GetTileVariation(BlankTiles, variation);
-
+                    
                         OwnerTilemap.SetTile(tilePos, ownerTileBase);
+
                         OwnerTilemap.SetColor(tilePos, layerColor);
                     }
                 }

@@ -70,6 +70,51 @@ namespace ER
             internal int GridCellIndex = -1;
 
             public bool IsSelected {get; set;}
+            
+            public enum PlayerOrderType
+            {
+                None,
+                MoveTo,
+                AttackUnit,
+            }
+            
+            public PlayerOrderType OrderType {get; set;} = PlayerOrderType.None;
+            public Vector2 OrderTargetPosition {get; set;}
+            public Unit OrderTargetUnit {get; set;}
+            public bool HasPlayerOrder => OrderType != PlayerOrderType.None;
+            
+            public void SetMoveOrder(Vector2 target)
+            {
+                OrderType = PlayerOrderType.MoveTo;
+
+                OrderTargetPosition = target;
+
+                OrderTargetUnit = null;
+
+                SetTarget(target);
+            }
+            
+            public void SetAttackOrder(Unit target)
+            {
+                OrderType = PlayerOrderType.AttackUnit;
+
+                OrderTargetUnit = target;
+
+                OrderTargetPosition = target.Position;
+
+                AttackTarget = target;
+
+                SetTarget(target.Position);
+            }
+            
+            public void ClearPlayerOrder()
+            {
+                OrderType = PlayerOrderType.None;
+
+                OrderTargetPosition = Vector2.zero;
+                
+                OrderTargetUnit = null;
+            }
 
             protected Unit(string unitId, string unitName, float maxHealth, float maxSpeed, string cultureId)
             {
@@ -121,9 +166,9 @@ namespace ER
                 {
                     float dot = Vector2.Dot(currentDir, newDir);
 
-                    if (dot < -0.5f)
+                    if (dot < 0f)
                     {
-                        Speed *= 0.5f;
+                        Speed *= -dot;
                     }
                 }
             }

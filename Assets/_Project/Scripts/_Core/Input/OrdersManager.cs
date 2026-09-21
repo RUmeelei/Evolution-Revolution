@@ -27,6 +27,14 @@ namespace ER
 
             private MainConfig mainConfig;
 
+            void Start()
+            {
+                if (Cam == null)
+                {
+                    Cam = Camera.main;
+                }
+            }
+
             void Awake()
             {
                 if (transform.parent != null)
@@ -80,24 +88,10 @@ namespace ER
             private void HandleUnitsOrder(Vector2 mousePos, bool isShift)
             {
                 var units = selectionManager.SelectedUnits;
-                
+
                 if (units.Count == 0) return;
-                
-                var unitsAtMousePos = unitManager.GetUnitsAtPosition(mousePos, 0.5f);
 
-                Unit targetUnit = null;
-
-                foreach (var u in unitsAtMousePos)
-                {
-                    var player = cultureManager.GetPlayerForCulture(u.CultureId);
-                    
-                    if (player == null || player.PlayerAI)
-                    {
-                        targetUnit = u;
-
-                        break;
-                    }
-                }
+                var unitsAtMousePos = unitManager.GetUnitsAtPosition(mousePos, 0.15f);
 
                 foreach (var unit in units)
                 {
@@ -105,15 +99,44 @@ namespace ER
 
                     if (player == null || player.PlayerAI) continue;
 
-                    if (targetUnit != null)
+                    bool clickedOnOwnUnit = false;
+
+                    Unit enemyTarget = null;
+                    
+                    foreach (var u in unitsAtMousePos)
                     {
-                        unit.AttackTarget = targetUnit;
+                        if (u.CultureId == unit.CultureId)
+                        {
+                            clickedOnOwnUnit = true;
+
+                            break;
+                        }
+                        
+                        if (UnitCombatSystem.IsEnemy(unit, u))
+                        {
+                            enemyTarget = u;
+
+                            break;
+                        }
+                    }
+                    
+                    if (clickedOnOwnUnit)
+                    {
+                        unit.ClearPlayerOrder();
+
+                        unit.ClearAttackTarget();
+
+                        unit.Stop();
+
+                        unit.AIState = UnitAIState.Idle;
+                    }
+                    else if (enemyTarget != null)
+                    {
+                        unit.SetAttackOrder(enemyTarget);
                     }
                     else
                     {
-                        unit.ClearAttackTarget();
-
-                        unit.SetTarget(mousePos);
+                        unit.SetMoveOrder(mousePos);
                     }
                 }
             }

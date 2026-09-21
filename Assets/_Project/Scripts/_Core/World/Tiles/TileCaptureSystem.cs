@@ -14,7 +14,7 @@ namespace ER
                 public static void ProcessCapture(TileData tile, int x, int y, Unit unit, TileManager tileManager, MainConfig mainConfig, float delta)
                 {
                     if (unit == null || !unit.IsAlive) return;
-
+                    
                     if (tile.Owner == unit.CultureId) return;
                     
                     if (!string.IsNullOrEmpty(tile.CapturingCultureId) && tile.CapturingCultureId != unit.CultureId)
@@ -23,6 +23,7 @@ namespace ER
 
                         tile.CaptureProgress = 0f;
                     }
+                    
                     else if (string.IsNullOrEmpty(tile.CapturingCultureId))
                     {
                         tile.CapturingCultureId = unit.CultureId;

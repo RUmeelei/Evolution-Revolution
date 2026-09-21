@@ -47,6 +47,11 @@ namespace ER
 
             [Tooltip("Capture progress decay rate (% per second)")]
             public float CaptureDecayRatePerSecond;
+
+            [Header("Game")]
+            [Tooltip("How often (in seconds) to check the conditions")]
+            public float CheckInterval;
+            public bool SpectatorMode;
         }
     }
 }

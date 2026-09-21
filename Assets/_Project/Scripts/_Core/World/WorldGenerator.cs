@@ -58,15 +58,18 @@ namespace ER
 
             public void GenerateWorld()
             {
-                List<string> cultureIds = GenerateCultures(1);
+                if (!mainConfig.SpectatorMode)
+                {
+                    List<string> cultureIds = GenerateCultures(1);
+
+                    CreatePlayers(cultureIds);
+                }
 
                 List<string> aiCultureIds = GenerateAICultures(WorldCreationData.AICulturesCount);
 
-                List<string> neutralCultureIds = GenerateNeutralCultures(WorldCreationData.NeutralCulturesCount);
-
-                CreatePlayers(cultureIds);
-
                 CreateAIPlayers(aiCultureIds);
+
+                List<string> neutralCultureIds = GenerateNeutralCultures(WorldCreationData.NeutralCulturesCount);
 
                 if (WorldCreationData.ToggleNeutralCultures) CreateNeutralCultures(neutralCultureIds);
             }

@@ -16,10 +16,19 @@ namespace ER
                 if (culture == null || culture.CultureDefeated) return;
                 
                 var player = playerManager.GetPlayerForCulture(culture.CultureId);
-
-                if (player != null && !player.PlayerAI) return;
                 
-
+                if (player != null && !player.PlayerAI)
+                {
+                    if (culture.RallyPoint == Vector2.zero)
+                    {
+                        culture.RallyPoint = tileManager.GetTileCenter(culture.CultureCapital.x, culture.CultureCapital.y);
+                    }
+                    
+                    return;
+                }
+                
+                UpdateAIStance(culture, unitManager);
+                
                 Vector2 invasionPoint = FindInvasionPoint(culture, tileManager, unitManager);
 
                 if (invasionPoint != Vector2.zero)
@@ -41,23 +50,55 @@ namespace ER
                 }
             }
             
+            private static void UpdateAIStance(CultureData culture, UnitManager unitManager)
+            {
+                var units = unitManager.GetUnitsByCulture(culture.CultureId);
+
+                int aliveCount = 0;
+
+                foreach (var u in units) 
+                {
+                    if (u.IsAlive) aliveCount++;
+                }
+                
+                if (aliveCount >= 8)
+                {
+                    culture.Stance = CultureStance.Aggressive;
+                }
+                else if (aliveCount >= 4)
+                {
+                    culture.Stance = CultureStance.Defensive;
+                }
+                else
+                {
+                    culture.Stance = CultureStance.Passive;
+                }
+            }
+            
             private static Vector2 FindExpansionTarget(CultureData culture, TileManager tileManager)
             {
-                int width = tileManager.WorldWidth;
-                int height = tileManager.WorldHeight;
-                
+                int searchRadius = 25;
+
+                int capitalX = culture.CultureCapital.x;
+                int capitalY = culture.CultureCapital.y;
+
+                int minX = Mathf.Max(0, capitalX - searchRadius);
+                int maxX = Mathf.Min(tileManager.WorldWidth - 1, capitalX + searchRadius);
+                int minY = Mathf.Max(0, capitalY - searchRadius);
+                int maxY = Mathf.Min(tileManager.WorldHeight - 1, capitalY + searchRadius);
+
                 var candidateTiles = new List<Vector2Int>();
 
-                for (int y = 0; y < height; y++)
+                for (int y = minY; y <= maxY; y++)
                 {
-                    for (int x = 0; x < width; x++)
+                    for (int x = minX; x <= maxX; x++)
                     {
                         var tile = tileManager.GetTile(x, y);
 
                         if (tile.Type == TileType.Water) continue;
 
                         if (tile.Owner != "CUL_NONE") continue;
-                        
+
                         if (BordersOurTerritory(x, y, culture.CultureId, tileManager))
                         {
                             candidateTiles.Add(new Vector2Int(x, y));
@@ -66,20 +107,25 @@ namespace ER
                 }
 
                 if (candidateTiles.Count == 0) return Vector2.zero;
-
-                Vector2 capital = tileManager.GetTileCenter(culture.CultureCapital.x, culture.CultureCapital.y);
                 
-                candidateTiles.Sort((a, b) => {float distA = Vector2.Distance(tileManager.GetTileCenter(a.x, a.y), capital); float distB = Vector2.Distance(tileManager.GetTileCenter(b.x, b.y), capital); return distA.CompareTo(distB);});
+                for (int i = candidateTiles.Count - 1; i > 0; i--)
+                {
+                    int j = Random.Range(0, i + 1);
+
+                    var temp = candidateTiles[i];
+
+                    candidateTiles[i] = candidateTiles[j];
+
+                    candidateTiles[j] = temp;
+                }
                 
                 int clusterSize = Mathf.Min(5, candidateTiles.Count);
 
-                var cluster = candidateTiles.GetRange(0, clusterSize);
-                
                 Vector2 center = Vector2.zero;
 
-                foreach (var pos in cluster)
+                for (int i = 0; i < clusterSize; i++)
                 {
-                    center += tileManager.GetTileCenter(pos.x, pos.y);
+                    center += tileManager.GetTileCenter(candidateTiles[i].x, candidateTiles[i].y);
                 }
 
                 center /= clusterSize;
@@ -101,7 +147,7 @@ namespace ER
                     if (ny < 0 || ny >= tileManager.WorldHeight) continue;
 
                     var neighbor = tileManager.GetTile(nx, ny);
-                    
+
                     if (neighbor.Owner == cultureId) return true;
                 }
 
@@ -119,7 +165,7 @@ namespace ER
                 foreach (var unit in allUnits)
                 {
                     if (!unit.IsAlive) continue;
-                    
+
                     if (unit.CultureId == culture.CultureId) continue;
                     
                     Vector2Int tilePos = tileManager.WorldToTilePos(unit.Position);

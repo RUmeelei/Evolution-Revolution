@@ -51,6 +51,11 @@ namespace ER
                 TargetZoom = Cam.orthographicSize;
                 TargetPosition = Cam.transform.position;
                 SmoothSpeed = 10f / mainConfig.CameraSmoothing;
+
+                if (Cam == null)
+                {
+                    Cam = Camera.main;
+                }
             }
     
             void Update()

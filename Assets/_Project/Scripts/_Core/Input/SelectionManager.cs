@@ -35,6 +35,14 @@ namespace ER
             private bool IsDragging;
             private bool IsDragThresholdMet;
 
+            void Start()
+            {
+                if (Cam == null)
+                {
+                    Cam = Camera.main;
+                }
+            }
+
             void Awake()
             {
                 if (transform.parent != null)
@@ -124,7 +132,7 @@ namespace ER
 
                 bool isShift = Input.GetKey(KeyCode.LeftShift);
 
-                List<Unit> unitsAtMousePos = unitManager.GetUnitsAtPosition(mousePos, 0.1f, true);
+                List<Unit> unitsAtMousePos = unitManager.GetUnitsAtPosition(mousePos, 0.15f, true);
 
                 if (unitsAtMousePos.Count > 0)
                 {

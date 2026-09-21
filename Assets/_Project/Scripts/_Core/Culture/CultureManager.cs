@@ -42,6 +42,7 @@ namespace ER
             private MainConfig mainConfig;
 
             public event Action<float> OnCultureTick;
+            public event System.Action<string> OnCultureDefeated;
 
             void Awake()
             {
@@ -116,6 +117,8 @@ namespace ER
                     CultureDefeated = false,
 
                     CultureColor = cultureColor,
+
+                    Stance = CultureStance.Passive,
                 };
 
                 Cultures.Add(culture);
@@ -164,6 +167,8 @@ namespace ER
                 culture.CultureDefeated = true;
 
                 Debug.Log($"{culture.CultureName} has been defeated");
+
+                OnCultureDefeated?.Invoke(id);
             }
 
             public CultureTrait CreateTraitTemplate(string traitId, string traitName, string traitDescription)

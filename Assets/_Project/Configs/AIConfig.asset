@@ -13,3 +13,8 @@ MonoBehaviour:
   m_Name: AIConfig
   m_EditorClassIdentifier: Assembly-CSharp::ER.Configs.AIConfig
   IsAIEnabled: 1
+  DecisionInterval: 0
+  FleeHealthThreshold: 0.3
+  FleeDistance: 8
+  AllySearchRadius: 8
+  WanderRadius: 8

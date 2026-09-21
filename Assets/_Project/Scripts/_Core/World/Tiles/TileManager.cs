@@ -30,6 +30,8 @@ namespace ER
 
                 public event Action<int, int> OnTileChanged;
 
+                private Dictionary<string, int> tilesByOwner = new Dictionary<string, int>();
+
                 private TileData[] Tiles;
 
                 private int Width;
@@ -90,6 +92,8 @@ namespace ER
 
                 private void GenerateWorld()
                 {
+                    tilesByOwner.Clear();
+
                     for (int y = 0; y < Height; y++)
                     {
                         for (int x = 0; x < Width; x++)
@@ -181,6 +185,17 @@ namespace ER
                     return new Vector2(x * mainConfig.TileSize + mainConfig.TileSize / 2f, y * mainConfig.TileSize + mainConfig.TileSize / 2f);
                 }
 
+                public Vector2Int GetClosestTilePos(Vector2 worldPos)
+                {
+                    int x = Mathf.RoundToInt((worldPos.x / mainConfig.TileSize) - 0.5f);
+                    int y = Mathf.RoundToInt((worldPos.y / mainConfig.TileSize) - 0.5f);
+
+                    x = Mathf.Clamp(x, 0, Width - 1);
+                    y = Mathf.Clamp(y, 0, Height - 1);
+
+                    return new Vector2Int(x, y);
+                }
+
                 public List<TileData> GetNeighboringTiles(int x, int y)
                 {
                     int size = WorldCreationData.WorldSize;
@@ -253,11 +268,21 @@ namespace ER
 
                 public void SetTileOwner(int x, int y, string newOwner)
                 {
-                    if (x < 0 || x >= Width || y < 0 || y >= Height || cultureManager.GetCulture(newOwner) == null) return;
+                    if (x < 0 || x >= Width || y < 0 || y >= Height) return;
+                    
+                    if (newOwner != "CUL_NONE" && cultureManager.GetCulture(newOwner) == null) return;
 
                     int i = y * Width + x;
 
                     TileData tile = Tiles[i];
+
+                    string oldOwner = tile.Owner;
+                    
+                    if (oldOwner == newOwner) return;
+                    
+                    UpdateOwnerCount(oldOwner, -1);
+
+                    UpdateOwnerCount(newOwner, +1);
 
                     tile.Owner = newOwner;
 
@@ -266,11 +291,41 @@ namespace ER
                     NotifyTileChanged(x, y);
                 }
 
+                private void UpdateOwnerCount(string ownerId, int delta)
+                {
+                    if (string.IsNullOrEmpty(ownerId)) return;
+
+                    if (!tilesByOwner.TryGetValue(ownerId, out int count))
+                    {
+                        count = 0;
+                    }
+
+                    count += delta;
+
+                    if (count <= 0)
+                    {
+                        tilesByOwner.Remove(ownerId);
+                    }
+                    else
+                    {
+                        tilesByOwner[ownerId] = count;
+                    }
+                }
+
                 public void UpdateTileData(int x, int y, TileData newData)
                 {
                     if (x < 0 || x >= Width || y < 0 || y >= Height) return;
 
                     int i = y * Width + x;
+
+                    TileData oldTile = Tiles[i];
+                    
+                    if (oldTile.Owner != newData.Owner)
+                    {
+                        UpdateOwnerCount(oldTile.Owner, -1);
+                        
+                        UpdateOwnerCount(newData.Owner, +1);
+                    }
 
                     Tiles[i] = newData;
 
@@ -312,6 +367,15 @@ namespace ER
                     if (culture == null) return Color.clear;
 
                     return culture.CultureColor;
+                }
+
+                public int GetTileCountForOwner(string ownerId)
+                {
+                    if (string.IsNullOrEmpty(ownerId)) return 0;
+
+                    tilesByOwner.TryGetValue(ownerId, out int count);
+
+                    return count;
                 }
             }
         }

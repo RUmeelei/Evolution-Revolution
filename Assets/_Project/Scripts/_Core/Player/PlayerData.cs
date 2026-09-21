@@ -22,6 +22,8 @@ namespace ER
             // public GovernmentData PlayerGovernment;
             public CultureData PlayerCulture;
 
+            public bool PlayerSpectator;
+
             public PlayerData(){}
 
             public PlayerData(string playerId, string playerName, bool isAI = false)

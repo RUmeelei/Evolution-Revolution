@@ -305,10 +305,10 @@ namespace ER
                         unit.Speed = Mathf.Max(0, unit.Speed - mainConfig.UnitDecelerationRate * delta);
                     }
 
-                    Vector2Int tilePos = tileManager.WorldToTilePos(unit.Position);
+                    Vector2Int tilePos = tileManager.GetClosestTilePos(unit.Position);
 
                     TileData currentTile = tileManager.GetTile(tilePos.x, tilePos.y);
-                    
+
                     if (currentTile.Type != TileType.Water)
                     {
                         TileCaptureSystem.ProcessCapture(currentTile, tilePos.x, tilePos.y, unit, tileManager, mainConfig, delta);

@@ -18,6 +18,7 @@ namespace ER
         using World.Tiles;
         using Unit;
         using Controls;
+        using Game;
 
         public class CoreManager : MonoBehaviour
         {
@@ -49,7 +50,9 @@ namespace ER
             public static UnitVisualPoolManager UnitVisualPoolManager {get; private set;}
             public static SelectionManager SelectionManager {get; private set;}
             public static OrdersManager OrdersManager {get; private set;}
+            public static VictoryManager VictoryManager {get; private set;}
             public static DatePanelManager DatePanelManager {get; private set;}
+            public static GameOverPanelManager GameOverPanelManager {get; private set;}
             public static MainPanelManager MainPanelManager {get; private set;}
             public static MainMenuPanelManager MainMenuPanelManager {get; private set;}
 
@@ -67,7 +70,9 @@ namespace ER
             public static void RegisterUnitVisualPoolManager(UnitVisualPoolManager manager) => UnitVisualPoolManager = manager;
             public static void RegisterSelectionManager(SelectionManager manager) => SelectionManager = manager;
             public static void RegisterOrdersManager(OrdersManager manager) => OrdersManager = manager;
+            public static void RegisterVictoryManager(VictoryManager manager) => VictoryManager = manager;
             public static void RegisterDatePanelManager(DatePanelManager manager) => DatePanelManager = manager;
+            public static void RegisterGameOverPanelManager(GameOverPanelManager manager) => GameOverPanelManager = manager;
             public static void RegisterMainPanelManager(MainPanelManager manager) => MainPanelManager = manager;
             public static void RegisterMainMenuPanelManager(MainMenuPanelManager manager) => MainMenuPanelManager = manager;
 
@@ -109,6 +114,43 @@ namespace ER
                 SelectionManager.Initialize();
 
                 OrdersManager.Initialize();
+
+                VictoryManager.Initialize();
+            }
+            
+            public static void RestartGame()
+            {
+                CameraManager = null;
+                SimulationManager = null;
+                DateManager = null;
+                CultureManager = null;
+                ResourceManager = null;
+                PlayerManager = null;
+                DiplomacyManager = null;
+                WorldGeneratorManager = null;
+                TileManager = null;
+                TileVisualManager = null;
+                UnitManager = null;
+                UnitVisualPoolManager = null;
+                SelectionManager = null;
+                OrdersManager = null;
+                DatePanelManager = null;
+                GameOverPanelManager = null;
+                MainPanelManager = null;
+                MainMenuPanelManager = null;
+                VictoryManager = null;
+                
+                var dontDestroyObjects = FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
+
+                foreach (var obj in dontDestroyObjects)
+                {
+                    if (obj.gameObject.scene.name == "DontDestroyOnLoad")
+                    {
+                        Destroy(obj.gameObject);
+                    }
+                }
+                
+                UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
             }
         }
     }
