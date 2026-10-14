@@ -61,7 +61,7 @@ MonoBehaviour:
   UnitAccelerationRate: 0.25
   UnitDecelerationRate: 1
   UnitVisualInitialSize: 5000
-  SelectionDragThreshold: 50
+  SelectionDragThreshold: 10
   CaptureRatePerSecond: 10
   CaptureDecayRatePerSecond: 5
   CheckInterval: 1

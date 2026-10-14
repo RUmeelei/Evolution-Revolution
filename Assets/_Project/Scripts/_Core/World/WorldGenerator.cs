@@ -65,13 +65,19 @@ namespace ER
                     CreatePlayers(cultureIds);
                 }
 
-                List<string> aiCultureIds = GenerateAICultures(WorldCreationData.AICulturesCount);
+                if (WorldCreationData.AICulturesCount > 0)
+                {
+                    List<string> aiCultureIds = GenerateAICultures(WorldCreationData.AICulturesCount);
 
-                CreateAIPlayers(aiCultureIds);
+                    CreateAIPlayers(aiCultureIds);
+                }
 
-                List<string> neutralCultureIds = GenerateNeutralCultures(WorldCreationData.NeutralCulturesCount);
+                if (WorldCreationData.ToggleNeutralCultures)
+                {
+                    List<string> neutralCultureIds = GenerateNeutralCultures(WorldCreationData.NeutralCulturesCount);
 
-                if (WorldCreationData.ToggleNeutralCultures) CreateNeutralCultures(neutralCultureIds);
+                    if (WorldCreationData.ToggleNeutralCultures) CreateNeutralCultures(neutralCultureIds);
+                }
             }
 
             private List<string> GenerateCultures(int count)

@@ -152,6 +152,39 @@ namespace ER
                 
                 UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
             }
+            
+            //public static void RestartGame()
+            //{
+            //    if (PlayerManager != null) PlayerManager.ResetState();
+            
+            //    if (UnitManager != null) UnitManager.ResetState();
+            
+            //    if (CultureManager != null) CultureManager.ResetState();
+            
+            //    if (TileManager != null) TileManager.ResetState();
+            
+            //    if (TileVisualManager != null) TileVisualManager.ResetState();
+            
+            //    if (WorldGeneratorManager != null) WorldGeneratorManager.ResetState();
+            
+            //    if (DiplomacyManager != null) DiplomacyManager.ResetState();
+            
+            //    if (ResourceManager != null) ResourceManager.ResetState();
+            
+            //    if (SelectionManager != null) SelectionManager.ResetState();
+            
+            //    if (OrdersManager != null) OrdersManager.ResetState();
+            
+            //    if (VictoryManager != null) VictoryManager.ResetState();
+            
+            //    if (SimulationManager != null) SimulationManager.ResetState();
+            
+            //    if (DateManager != null) DateManager.ResetState();
+            
+            //    if (CameraManager != null) CameraManager.ResetState();
+            
+            //    UnityEngine.SceneManagement.SceneManager.LoadScene("GameScene");
+            //}
         }
     }
 }

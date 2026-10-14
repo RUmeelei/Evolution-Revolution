@@ -30,7 +30,7 @@ namespace ER
 
             private List<Unit> DeadUnits = new List<Unit>();
 
-            private float СaptureDecayTimer = 0f;
+            private float CaptureDecayTimer = 0f;
             private const float CaptureDecayInterval = 0.5f;
 
             private int NextUnitId = 1;
@@ -46,7 +46,7 @@ namespace ER
             private UnitVisualPoolManager unitVisualPoolManager;
             private PlayerManager playerManager;
 
-            private UnitSpatialGrid unitSpatialGrid;
+            private UnitSpatialGrid UnitSpatialGrid;
 
             private float worldWidth;
             private float worldHeight;
@@ -110,7 +110,7 @@ namespace ER
                 worldWidth = tileManager.WorldWidth * mainConfig.TileSize;
                 worldHeight = tileManager.WorldHeight * mainConfig.TileSize;
 
-                unitSpatialGrid = new UnitSpatialGrid(worldWidth, worldHeight, mainConfig.TileSize * 4f);
+                UnitSpatialGrid = new UnitSpatialGrid(worldWidth, worldHeight, mainConfig.TileSize * 4f);
 
                 var cultures = cultureManager.GetActiveCultures();
 
@@ -176,6 +176,8 @@ namespace ER
 
                     view.Initialize(unit, sprites);
                 }
+
+                unit.UnitVisual = view;
             }
 
             private void AddUnit(Unit unit)
@@ -186,7 +188,7 @@ namespace ER
 
                 UnitsDictionary[unit.UnitId] = unit;
 
-                unitSpatialGrid.Register(unit);
+                UnitSpatialGrid.Register(unit);
             }
 
             public Unit GetUnit(string id)
@@ -200,7 +202,7 @@ namespace ER
 
             public List<Unit> GetUnitsAtPosition(Vector2 position, float radius = 1f, bool single = false)
             {
-                return unitSpatialGrid.GetUnitsInRadius(position, radius, single);
+                return UnitSpatialGrid.GetUnitsInRadius(position, radius, single);
             }
 
             public List<Unit> GetUnitsByCulture(string cultureId)
@@ -223,7 +225,7 @@ namespace ER
 
                 UnitsDictionary.Remove(id);
 
-                unitSpatialGrid.Unregister(unit);
+                UnitSpatialGrid.Unregister(unit);
             }
 
             private void ProcessUnitTick(float delta)
@@ -247,7 +249,7 @@ namespace ER
 
                     if (aiConfig.IsAIEnabled)
                     {
-                        UnitAISystem.ProcessUnit(unit, aiConfig, unitSpatialGrid, cultureManager, playerManager, tileManager, worldWidth, worldHeight);
+                        UnitAISystem.ProcessUnit(unit, aiConfig, UnitSpatialGrid, cultureManager, playerManager, tileManager, worldWidth, worldHeight);
                     }
                     
                     // Combat
@@ -298,7 +300,7 @@ namespace ER
 
                         unit.MoveTowardsTarget(delta);
 
-                        unitSpatialGrid.UpdatePosition(unit, oldPosition);
+                        UnitSpatialGrid.UpdatePosition(unit, oldPosition);
                     }
                     else if (unit.Speed > 0)
                     {
@@ -315,11 +317,11 @@ namespace ER
                     }
                 }
                 
-                СaptureDecayTimer += delta;
+                CaptureDecayTimer += delta;
 
-                if (СaptureDecayTimer >= CaptureDecayInterval)
+                if (CaptureDecayTimer >= CaptureDecayInterval)
                 {
-                    СaptureDecayTimer = 0f;
+                    CaptureDecayTimer = 0f;
 
                     ProcessCaptureDecay();
                 }
@@ -355,7 +357,7 @@ namespace ER
                         
                         Vector2 tileCenter = tileManager.GetTileCenter(x, y);
 
-                        var unitsOnTile = unitSpatialGrid.GetUnitsInRadius(tileCenter, mainConfig.TileSize * 0.5f);
+                        var unitsOnTile = UnitSpatialGrid.GetUnitsInRadius(tileCenter, mainConfig.TileSize * 0.5f);
 
                         bool hasCapturer = false;
 

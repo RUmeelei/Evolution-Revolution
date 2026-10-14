@@ -17,7 +17,7 @@ namespace ER
                 [Header("Main")]
                 public bool EnableLogging;
 
-                private Dictionary<string, RelationState> relations = new Dictionary<string, RelationState>();
+                private Dictionary<string, RelationState> Relations = new Dictionary<string, RelationState>();
 
                 public event System.Action<string, string> OnWarDeclared;
                 public event System.Action<string, string> OnPeaceMade;
@@ -120,7 +120,7 @@ namespace ER
 
                     string key = GetRelationKey(cultureId1, cultureId2);
 
-                    if (relations.TryGetValue(key, out RelationState state))
+                    if (Relations.TryGetValue(key, out RelationState state))
                     {
                         return state;
                     }
@@ -139,9 +139,9 @@ namespace ER
 
                     string key = GetRelationKey(cultureId1, cultureId2);
                     
-                    if (relations.TryGetValue(key, out RelationState current) && current == RelationState.War) return;
+                    if (Relations.TryGetValue(key, out RelationState current) && current == RelationState.War) return;
 
-                    relations[key] = RelationState.War;
+                    Relations[key] = RelationState.War;
 
                     if (EnableLogging)
                     {
@@ -157,9 +157,9 @@ namespace ER
 
                     string key = GetRelationKey(cultureId1, cultureId2);
                     
-                    if (!relations.TryGetValue(key, out RelationState current) || current == RelationState.Peace) return;
+                    if (!Relations.TryGetValue(key, out RelationState current) || current == RelationState.Peace) return;
 
-                    relations[key] = RelationState.Peace;
+                    Relations[key] = RelationState.Peace;
 
                     if (EnableLogging)
                     {
