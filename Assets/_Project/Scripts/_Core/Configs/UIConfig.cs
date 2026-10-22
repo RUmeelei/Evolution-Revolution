@@ -14,6 +14,7 @@ namespace ER
             public Color MainTextColor;
             public Color SecondTextColor;
             public Color ThirdTextColor;
+            public Color AdditionalTextColor;
 
             public Color SuccessColor;
             public Color ErrorColor;

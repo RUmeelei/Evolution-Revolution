@@ -6,10 +6,12 @@ namespace ER
     namespace Core
     {
         using Configs;
+        using World.Tiles;
+        using Players;
 
         public class CameraManager : MonoBehaviour
         {
-            public static CameraManager Instance {get; private set;}
+            public static CameraManager Instance { get; private set; }
 
             [Header("Main")]
             [SerializeField] private Camera Cam;
@@ -18,12 +20,12 @@ namespace ER
             private Vector3 LastMousePosition;
 
             private float TargetZoom;
-
             private bool IsDragging = false;
-
             private float SmoothSpeed;
 
             private MainConfig mainConfig;
+            private TileManager tileManager;
+            private PlayerManager playerManager;
 
             void Awake()
             {
@@ -31,7 +33,7 @@ namespace ER
                 {
                     transform.SetParent(null);
                 }
-                
+
                 if (Instance != null && Instance != this)
                 {
                     Destroy(gameObject); return;
@@ -46,45 +48,87 @@ namespace ER
 
             void Start()
             {
-                mainConfig = CoreManager.MainConfig;
-
-                TargetZoom = Cam.orthographicSize;
-                TargetPosition = Cam.transform.position;
-                SmoothSpeed = 10f / mainConfig.CameraSmoothing;
-
                 if (Cam == null)
                 {
                     Cam = Camera.main;
                 }
+
+                mainConfig = CoreManager.MainConfig;
+                tileManager = CoreManager.TileManager;
+                playerManager = CoreManager.PlayerManager;
+
+                TargetZoom = Cam.orthographicSize;
+                TargetPosition = Cam.transform.position;
+                SmoothSpeed = 10f / Mathf.Max(0.1f, mainConfig.CameraSmoothing);
+
+                FocusOnPlayerCapital(true);
             }
-    
+
             void Update()
             {
+                if (Cam == null) return;
+                
+                if (Input.GetKeyDown(KeyCode.H) || Input.GetKeyDown(KeyCode.Home))
+                {
+                    FocusOnPlayerCapital(false);
+                }
+
                 HandleMovement();
                 HandleZoom();
+                ClampTargetToWorld();
                 HandleSmoothing();
+            }
+
+            public void FocusOnPlayerCapital(bool instant = false)
+            {
+                if (playerManager == null) playerManager = CoreManager.PlayerManager;
+
+                if (tileManager == null) tileManager = CoreManager.TileManager;
+
+                if (playerManager == null || tileManager == null) return;
+
+                var player = playerManager.GetPlayer("PLAYER_0001");
+                if (player != null && player.PlayerCulture != null)
+                {
+                    Vector2 capCenter = tileManager.GetTileCenter(
+                        player.PlayerCulture.CultureCapital.x,
+                        player.PlayerCulture.CultureCapital.y
+                    );
+                    TargetPosition = new Vector3(capCenter.x, capCenter.y, -1f);
+
+                    if (instant && Cam != null)
+                    {
+                        Cam.transform.position = TargetPosition;
+                    }
+                }
             }
 
             private void HandleMovement()
             {
-                float speedMultiplier = mainConfig.CameraKeyboardScrollSpeed * (Cam.orthographicSize / mainConfig.CameraMinHeight);
+                bool pointerOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+
+                float speedMultiplier = mainConfig.CameraKeyboardScrollSpeed * (Cam.orthographicSize / Mathf.Max(1f, mainConfig.CameraMinHeight));
 
                 if (Input.GetKey(KeyCode.LeftShift))
                 {
-                    speedMultiplier = speedMultiplier * 2;
+                    speedMultiplier *= 2f;
                 }
 
-                if (Input.GetKey(KeyCode.W) && !IsDragging && !EventSystem.current.IsPointerOverGameObject()) TargetPosition += Vector3.up * speedMultiplier * Time.deltaTime;
-                if (Input.GetKey(KeyCode.S) && !IsDragging && !EventSystem.current.IsPointerOverGameObject()) TargetPosition += Vector3.down * speedMultiplier * Time.deltaTime;
-                if (Input.GetKey(KeyCode.A) && !IsDragging && !EventSystem.current.IsPointerOverGameObject()) TargetPosition += Vector3.left * speedMultiplier * Time.deltaTime;
-                if (Input.GetKey(KeyCode.D) && !IsDragging && !EventSystem.current.IsPointerOverGameObject()) TargetPosition += Vector3.right * speedMultiplier * Time.deltaTime;
+                if (!IsDragging && !pointerOverUI && !Input.GetKey(KeyCode.LeftControl))
+                {
+                    if (Input.GetKey(KeyCode.W)) TargetPosition += Vector3.up * speedMultiplier * Time.unscaledDeltaTime;
+                    if (Input.GetKey(KeyCode.S)) TargetPosition += Vector3.down * speedMultiplier * Time.unscaledDeltaTime;
+                    if (Input.GetKey(KeyCode.A)) TargetPosition += Vector3.left * speedMultiplier * Time.unscaledDeltaTime;
+                    if (Input.GetKey(KeyCode.D)) TargetPosition += Vector3.right * speedMultiplier * Time.unscaledDeltaTime;
+                }
 
-                if (Input.GetMouseButtonDown(2) && !EventSystem.current.IsPointerOverGameObject())
+                if (Input.GetMouseButtonDown(2) && !pointerOverUI)
                 {
                     LastMousePosition = Input.mousePosition;
                     IsDragging = true;
                 }
-                if (Input.GetMouseButtonUp(2) || EventSystem.current.IsPointerOverGameObject())
+
+                if (Input.GetMouseButtonUp(2) || pointerOverUI)
                 {
                     IsDragging = false;
                 }
@@ -94,7 +138,7 @@ namespace ER
                     Vector3 mouseDelta = Input.mousePosition - LastMousePosition;
                     LastMousePosition = Input.mousePosition;
 
-                    float worldUnitsPerPixel = Cam.orthographicSize * 2f / Cam.pixelHeight;
+                    float worldUnitsPerPixel = Cam.orthographicSize * 2f / Mathf.Max(1, Cam.pixelHeight);
                     Vector3 worldDelta = new Vector3(mouseDelta.x, mouseDelta.y, 0f) * worldUnitsPerPixel;
 
                     TargetPosition -= worldDelta;
@@ -103,28 +147,39 @@ namespace ER
 
             private void HandleZoom()
             {
-                if (Input.mouseScrollDelta.y != 0)
+                bool pointerOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+                if (!pointerOverUI && Input.mouseScrollDelta.y != 0)
                 {
-                    float newSize = TargetZoom - Input.mouseScrollDelta.y * mainConfig.CameraZoomSpeed * Time.deltaTime;
-
+                    float newSize = TargetZoom - Input.mouseScrollDelta.y * mainConfig.CameraZoomSpeed * Time.unscaledDeltaTime;
                     TargetZoom = Mathf.Clamp(newSize, mainConfig.CameraMinHeight, mainConfig.CameraMaxHeight);
                 }
             }
 
+            private void ClampTargetToWorld()
+            {
+                if (tileManager == null) tileManager = CoreManager.TileManager;
+                if (tileManager == null || mainConfig == null) return;
+
+                float maxWorldX = tileManager.WorldWidth * mainConfig.TileSize;
+                float maxWorldY = tileManager.WorldHeight * mainConfig.TileSize;
+
+                TargetPosition.x = Mathf.Clamp(TargetPosition.x, 0f, maxWorldX);
+                TargetPosition.y = Mathf.Clamp(TargetPosition.y, 0f, maxWorldY);
+                TargetPosition.z = -1f;
+            }
+
             private void HandleSmoothing()
             {
-                TargetPosition.z = -1f;
-
-                if (IsDragging) 
+                if (IsDragging)
                 {
                     Cam.transform.position = TargetPosition;
-                } 
+                }
                 else
                 {
-                    Cam.transform.position = Vector3.Lerp(Cam.transform.position, TargetPosition, SmoothSpeed * Time.deltaTime);
+                    Cam.transform.position = Vector3.Lerp(Cam.transform.position, TargetPosition, SmoothSpeed * Time.unscaledDeltaTime);
                 }
 
-                Cam.orthographicSize = Mathf.Lerp(Cam.orthographicSize, TargetZoom, SmoothSpeed * Time.deltaTime);
+                Cam.orthographicSize = Mathf.Lerp(Cam.orthographicSize, TargetZoom, SmoothSpeed * Time.unscaledDeltaTime);
             }
         }
     }

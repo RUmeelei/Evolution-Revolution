@@ -12,6 +12,7 @@ namespace ER
         using Culture;
         using World;
         using World.Tiles;
+        using UI.InGame;
 
         public class SelectionManager : MonoBehaviour
         {
@@ -24,6 +25,8 @@ namespace ER
             private TileManager tileManager;
             private UnitManager unitManager;
             private CultureManager cultureManager;
+
+            private SelectionPanelManager selectionPanelManager;
 
             private MainConfig mainConfig;
 
@@ -70,11 +73,32 @@ namespace ER
 
                 cultureManager = CoreManager.CultureManager;
 
+                selectionPanelManager = CoreManager.SelectionPanelManager;
+
                 mainConfig = CoreManager.MainConfig;
             }
 
             void Update()
             {
+                SelectedUnits.RemoveAll(u => u == null || !u.IsAlive);
+                
+                if (Input.GetKeyDown(KeyCode.Space))
+                {
+                    var sim = CoreManager.SimulationManager;
+
+                    if (sim != null)
+                    {
+                        if (sim.IsSimulationRunning) sim.Pause();
+
+                        else sim.Unpause();
+                    }
+                }
+
+                if (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.A))
+                {
+                    SelectAllPlayerUnits();
+                }
+
                 bool isOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject() && !IsDragging;
 
                 if (isOverUI) return;
@@ -153,6 +177,8 @@ namespace ER
                         SelectedUnits.Clear();
                     } 
                 }
+
+                selectionPanelManager.UpdateUI();
             }
 
             private void HandleDrag()
@@ -201,6 +227,8 @@ namespace ER
                         }
                     }
                 }
+
+                selectionPanelManager.UpdateUI();
             }
 
             private void DeselectUnits(List<Unit> units)
@@ -283,6 +311,29 @@ namespace ER
                 foreach (var tile in oldTiles)
                 {
                     tileManager.NotifyTileChanged(tile.x, tile.y);
+                }
+            }
+
+            private void SelectAllPlayerUnits()
+            {
+                ClearTiles();
+
+                MarkSelected(SelectedUnits, false);
+
+                SelectedUnits.Clear();
+
+                foreach (var unit in unitManager.GetAllUnits())
+                {
+                    if (!unit.IsAlive) continue;
+
+                    var player = cultureManager.GetPlayerForCulture(unit.CultureId);
+
+                    if (player != null && !player.PlayerAI)
+                    {
+                        unit.IsSelected = true;
+                        
+                        SelectedUnits.Add(unit);
+                    }
                 }
             }
 

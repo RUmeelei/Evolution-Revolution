@@ -14,11 +14,12 @@ namespace ER
             using Configs;
             using Culture;
             using World;
+            using World.Tiles;
             using Unit;
 
             public class MainMenuPanelManager : MonoBehaviour
             {
-                public static MainMenuPanelManager Instance {get; private set;}
+                public static MainMenuPanelManager Instance { get; private set; }
 
                 public static List<CultureTrait> CultureTraits = new List<CultureTrait>();
 
@@ -36,6 +37,11 @@ namespace ER
                 [SerializeField] private Toggle NeutralCulturesToggle;
                 [SerializeField] private Slider AICulturesCountSlider;
                 [SerializeField] private Slider NeutralCulturesCountSlider;
+
+                [Header("World Preview")]
+                [SerializeField] private Image WorldPreviewImage;
+                [SerializeField] private RawImage WorldPreviewRawImage;
+                [SerializeField] private Button RegenerateWorldPreviewButton;
 
                 [Header("Culture Creation")]
                 [SerializeField] private GameObject CultureCreationPanel;
@@ -55,8 +61,7 @@ namespace ER
                 [SerializeField] private Button CloseSettingsPanelButton;
 
                 private MainConfig mainConfig;
-
-                // private int CultureTraitsPoints;
+                private Texture2D currentPreviewTexture;
 
                 void Awake()
                 {
@@ -64,23 +69,21 @@ namespace ER
                     {
                         transform.SetParent(null);
                     }
-                
+
                     if (Instance != null && Instance != this)
                     {
                         Destroy(gameObject); return;
                     }
-    
+
                     Instance = this;
-    
-                    DontDestroyOnLoad(gameObject);
-    
+
                     CoreManager.RegisterMainMenuPanelManager(this);
                 }
 
                 void Start()
                 {
                     mainConfig = CoreManager.MainConfig;
-                    
+
                     if (OpenNewGamePanelButton != null) OpenNewGamePanelButton.onClick.AddListener(OpenNewGamePanelButtonHandler);
                     if (OpenLoadGamePanelButton != null) OpenLoadGamePanelButton.onClick.AddListener(OpenLoadGamePanelButtonHandler);
                     if (OpenSettingsPanelButton != null) OpenSettingsPanelButton.onClick.AddListener(OpenSettingsPanelButtonHandler);
@@ -89,6 +92,9 @@ namespace ER
                     if (ContinueToCulturesButton != null) ContinueToCulturesButton.onClick.AddListener(ContinueToCulturesButtonHandler);
                     if (CloseNewGamePanelButton != null) CloseNewGamePanelButton.onClick.AddListener(CloseNewGamePanelButtonHandler);
 
+                    if (WorldSizeSlider != null) WorldSizeSlider.onValueChanged.AddListener(_ => RefreshWorldPreview(false));
+                    if (RegenerateWorldPreviewButton != null) RegenerateWorldPreviewButton.onClick.AddListener(() => RefreshWorldPreview(true));
+
                     if (StartNewGameButton != null) StartNewGameButton.onClick.AddListener(StartNewGameButtonHandler);
                     if (CloseCultureCreationPanelButton != null) CloseCultureCreationPanelButton.onClick.AddListener(CloseCultureCreationPanelButtonHandler);
 
@@ -96,8 +102,40 @@ namespace ER
                     if (CloseLoadGamePanelButton != null) CloseLoadGamePanelButton.onClick.AddListener(CloseLoadGamePanelButtonHandler);
 
                     if (CloseSettingsPanelButton != null) CloseSettingsPanelButton.onClick.AddListener(CloseSettingsPanelButtonHandler);
-                
-                    LoadTraitsFromResources();
+                }
+
+                private void RefreshWorldPreview(bool rollNewSeed)
+                {
+                    if (mainConfig == null) mainConfig = CoreManager.MainConfig;
+
+                    int seed = WorldMapGenerator.EnsureSeed(rollNewSeed);
+                    int size = WorldSizeSlider != null ? Mathf.Max(10, (int)WorldSizeSlider.value) : 64;
+
+                    if (currentPreviewTexture != null)
+                    {
+                        Destroy(currentPreviewTexture);
+                    }
+
+                    currentPreviewTexture = WorldMapGenerator.GeneratePreviewTexture(size, mainConfig, seed);
+
+                    if (WorldPreviewRawImage != null)
+                    {
+                        WorldPreviewRawImage.texture = currentPreviewTexture;
+                        WorldPreviewRawImage.color = Color.white;
+                    }
+
+                    if (WorldPreviewImage != null)
+                    {
+                        Sprite previewSprite = Sprite.Create(
+                            currentPreviewTexture,
+                            new Rect(0, 0, currentPreviewTexture.width, currentPreviewTexture.height),
+                            new Vector2(0.5f, 0.5f),
+                            100f
+                        );
+
+                        WorldPreviewImage.sprite = previewSprite;
+                        WorldPreviewImage.color = Color.white;
+                    }
                 }
 
                 private void OpenNewGamePanelButtonHandler()
@@ -108,6 +146,7 @@ namespace ER
                     if (NewGamePanel != null)
                     {
                         NewGamePanel.gameObject.SetActive(true);
+                        RefreshWorldPreview(WorldMapGenerator.CurrentSeed == 0);
                     }
                 }
 
@@ -144,22 +183,14 @@ namespace ER
 
                 private void ContinueToCulturesButtonHandler()
                 {
-                    // CultureTraitsPoints = 3;
-
-                    if (CultureCreationPanel != null)
-                    {
-                        CultureCreationPanel.gameObject.SetActive(true);
-                    }
-                    else SceneManager.LoadScene("Game");
-
                     if (WorldSizeSlider != null)
                     {
-                        WorldCreationData.WorldSize = (int)WorldSizeSlider.value;
+                        WorldCreationData.WorldSize = Mathf.Max(10, (int)WorldSizeSlider.value);
                     }
 
                     if (NeutralCulturesToggle != null)
                     {
-                        WorldCreationData.ToggleNeutralCultures = NeutralCulturesToggle;
+                        WorldCreationData.ToggleNeutralCultures = NeutralCulturesToggle.isOn;
                     }
 
                     if (AICulturesCountSlider != null)
@@ -173,6 +204,15 @@ namespace ER
                     }
 
                     CloseNewGamePanelButtonHandler();
+
+                    if (CultureCreationPanel != null)
+                    {
+                        CultureCreationPanel.gameObject.SetActive(true);
+                    }
+                    else
+                    {
+                        SceneManager.LoadScene("Game");
+                    }
                 }
 
                 private void CloseNewGamePanelButtonHandler()
@@ -185,16 +225,16 @@ namespace ER
 
                 private void StartNewGameButtonHandler()
                 {
-                    string name = CultureNameInput.text.Trim();
-                    string description = CultureDescriptionInput.text.Trim();
+                    string name = CultureNameInput != null ? CultureNameInput.text.Trim() : "";
+                    string description = CultureDescriptionInput != null ? CultureNameInput.text.Trim() : "";
 
-                    if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(description)) return;
+                    if (string.IsNullOrEmpty(name)) name = "Player Empire";
+                    if (string.IsNullOrEmpty(description)) description = $"The proud people of {name}, ready to shape history.";
 
                     CultureCreationData.Name = name;
                     CultureCreationData.Description = description;
-
-                    CultureCreationData.Color = Random.ColorHSV(0f, 1f, 0f, 1f, 0f, 1f);
-
+                    
+                    CultureCreationData.Color = Random.ColorHSV(0f, 1f, 0.65f, 1f, 0.75f, 1f);
                     CultureCreationData.CultureEthnicity = UnitEthnicity.European;
 
                     SceneManager.LoadScene("Game");
@@ -228,20 +268,6 @@ namespace ER
                     if (SettingsPanel != null)
                     {
                         SettingsPanel.gameObject.SetActive(false);
-                    }
-                }
-
-                private void LoadTraitsFromResources()
-                {
-                    string[] guids = UnityEditor.AssetDatabase.FindAssets("t:CultureTrait");
-
-                    foreach (string guid in guids)
-                    {
-                        string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
-
-                        CultureTrait trait = UnityEditor.AssetDatabase.LoadAssetAtPath<CultureTrait>(path);
-
-                        if (trait != null) CultureTraits.Add(trait);
                     }
                 }
             }

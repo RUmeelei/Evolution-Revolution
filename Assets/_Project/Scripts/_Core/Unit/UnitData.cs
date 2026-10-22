@@ -38,6 +38,8 @@ namespace ER
                 set => _targetPosition = value;
             }
             public bool HasTarget => TargetPosition != Position;
+            private List<Vector2> waypoints = new List<Vector2>();
+            private Vector2 lastPathTarget = new Vector2(-999f, -999f);
 
             public UnitVisual UnitVisual {get; set;}
 
@@ -70,6 +72,10 @@ namespace ER
             internal int GridCellIndex = -1;
 
             public bool IsSelected {get; set;}
+
+            public float DecisionTimer = 0f;
+
+            public bool IsCapturing = false;
             
             public enum PlayerOrderType
             {
@@ -82,6 +88,12 @@ namespace ER
             public Vector2 OrderTargetPosition {get; set;}
             public Unit OrderTargetUnit {get; set;}
             public bool HasPlayerOrder => OrderType != PlayerOrderType.None;
+
+            public bool IsAutonomous {get; set;} = true;
+
+            public float Armor {get; protected set;}
+            public float ArmorPenetration {get; protected set;}
+            public float EquipmentSpeedMultiplier {get; protected set;} = 1f;
             
             public void SetMoveOrder(Vector2 target)
             {
@@ -133,20 +145,29 @@ namespace ER
             public virtual void Update(float delta)
             {
             }
-
+            
             public virtual void MoveTowardsTarget(float delta)
             {
-                Vector2 direction = (TargetPosition - Position).normalized;
-
-                float distance = Vector2.Distance(Position, TargetPosition);
-
+                Vector2 activeWaypoint = waypoints.Count > 0 ? waypoints[0] : TargetPosition;
+            
+                Vector2 direction = (activeWaypoint - Position).normalized;
+                float distance = Vector2.Distance(Position, activeWaypoint);
                 float moveDistance = Speed * delta;
-    
+            
                 if (distance <= moveDistance)
                 {
-                    Position = TargetPosition;
-
-                    Speed = 0f;
+                    Position = activeWaypoint;
+            
+                    if (waypoints.Count > 0)
+                    {
+                        waypoints.RemoveAt(0);
+                    }
+            
+                    if (waypoints.Count == 0)
+                    {
+                        Position = TargetPosition;
+                        Speed = 0f;
+                    }
                 }
                 else
                 {
@@ -154,27 +175,51 @@ namespace ER
                 }
             }
 
+            public void ApplySeparation(Vector2 pushForce, float maxWorldX = float.MaxValue, float maxWorldY = float.MaxValue)
+            {
+                Vector2 nextPos = Position + pushForce;
+
+                nextPos.x = Mathf.Clamp(nextPos.x, 0.25f, maxWorldX - 0.25f);
+                nextPos.y = Mathf.Clamp(nextPos.y, 0.25f, maxWorldY - 0.25f);
+                
+                Position = nextPos;
+            }
+            
             public virtual void SetTarget(Vector2 target)
             {
+                var tileManager = Core.CoreManager.TileManager;
+            
+                if (tileManager != null && tileManager.WorldToTile(target).Type == World.Tiles.TileType.Water)
+                {
+                    return;
+                }
+            
                 Vector2 currentDir = HasTarget ? (TargetPosition - Position).normalized : Vector2.zero;
-
                 Vector2 newDir = (target - Position).sqrMagnitude > 0.001f ? (target - Position).normalized : Vector2.zero;
-
+            
                 TargetPosition = target;
+            
+                if (tileManager != null && Vector2.Distance(target, lastPathTarget) > 0.4f)
+                {
+                    lastPathTarget = target;
+                    World.Tiles.PathfindingSystem.TryFindPath(Position, target, tileManager, waypoints);
+                }
                 
                 if (currentDir != Vector2.zero && newDir != Vector2.zero)
                 {
                     float dot = Vector2.Dot(currentDir, newDir);
-
+            
                     if (dot < 0f)
                     {
                         Speed *= -dot;
                     }
                 }
             }
-
+            
             public virtual void Stop()
             {
+                waypoints.Clear();
+                
                 TargetPosition = Position;
             }
 
@@ -239,6 +284,18 @@ namespace ER
             public virtual void AddItem(string item) {}
             public virtual void RemoveItem(string item) {}
 
+            public virtual void SetAutonomous(bool autonomy)
+            {
+                IsAutonomous = autonomy;
+            }
+
+            public void SetEquipmentStats(float armor, float armorPenetration, float speedMultiplier)
+            {
+                Armor = Mathf.Max(0f, armor);
+                ArmorPenetration = Mathf.Max(0f, armorPenetration);
+                EquipmentSpeedMultiplier = Mathf.Clamp(speedMultiplier, 0.4f, 1.5f);
+            }
+
             // AI
 
             public UnitAIState AIState {get; set;} = UnitAIState.Idle;
@@ -265,10 +322,9 @@ namespace ER
 
             public void UpdateCombatCooldown(float delta)
             {
-                if (AttackCooldownTimer > 0)
-                {
-                    AttackCooldownTimer -= delta;
-                }
+                if (AttackCooldownTimer > 0) AttackCooldownTimer -= delta;
+                
+                if (DecisionTimer > 0) DecisionTimer -= delta;
             }
 
             public void MarkAttackPerformed(Unit target)

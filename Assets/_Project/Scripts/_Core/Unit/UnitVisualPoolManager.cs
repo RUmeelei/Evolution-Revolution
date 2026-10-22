@@ -10,12 +10,13 @@ namespace ER
 
         public class UnitVisualPoolManager : MonoBehaviour
         {
-            public static UnitVisualPoolManager Instance {get; private set;}
+            public static UnitVisualPoolManager Instance { get; private set; }
 
             [Header("Main")]
             [SerializeField] private GameObject Prefab;
 
             private Queue<UnitVisual> Pool = new Queue<UnitVisual>();
+            private HashSet<UnitVisual> InPoolSet = new HashSet<UnitVisual>();
 
             private MainConfig mainConfig;
 
@@ -25,7 +26,7 @@ namespace ER
                 {
                     transform.SetParent(null);
                 }
-            
+
                 if (Instance != null && Instance != this)
                 {
                     Destroy(gameObject); return;
@@ -47,6 +48,8 @@ namespace ER
                     var view = CreateNew();
 
                     Pool.Enqueue(view);
+
+                    InPoolSet.Add(view);
                 }
             }
 
@@ -61,25 +64,35 @@ namespace ER
 
             public UnitVisual Get()
             {
+                UnitVisual view;
+
                 if (Pool.Count > 0)
                 {
-                    var view = Pool.Dequeue();
+                    view = Pool.Dequeue();
 
-                    view.gameObject.SetActive(true);
-
-                    return view;
+                    InPoolSet.Remove(view);
+                }
+                else
+                {
+                    view = CreateNew();
                 }
                 
-                return CreateNew();
+                view.gameObject.SetActive(true);
+
+                return view;
             }
 
             public void Return(UnitVisual view)
             {
+                if (view == null || InPoolSet.Contains(view)) return;
+
                 view.Release();
 
                 view.gameObject.SetActive(false);
 
                 Pool.Enqueue(view);
+                
+                InPoolSet.Add(view);
             }
         }
     }

@@ -13,7 +13,8 @@ namespace ER
         using Resources;
         using Players;
         using Politics;
-        using Politics.Diplomacy;
+        using Politics.External.Diplomacy;
+        using Politics.Internal.Government;
         using World;
         using World.Tiles;
         using Unit;
@@ -43,6 +44,7 @@ namespace ER
             public static ResourceManager ResourceManager {get; private set;}
             public static PlayerManager PlayerManager {get; private set;}
             public static DiplomacyManager DiplomacyManager {get; private set;}
+            public static GovernmentManager GovernmentManager {get; private set;}
             public static WorldGeneratorManager WorldGeneratorManager {get; private set;}
             public static TileManager TileManager {get; private set;}
             public static TileVisualManager TileVisualManager {get; private set;}
@@ -54,6 +56,9 @@ namespace ER
             public static DatePanelManager DatePanelManager {get; private set;}
             public static GameOverPanelManager GameOverPanelManager {get; private set;}
             public static MainPanelManager MainPanelManager {get; private set;}
+            public static PoliticsPanelManager PoliticsPanelManager {get; private set;}
+            public static ResourcesPanelManager ResourcesPanelManager {get; private set;}
+            public static SelectionPanelManager SelectionPanelManager {get; private set;}
             public static MainMenuPanelManager MainMenuPanelManager {get; private set;}
 
             public static void RegisterCameraManager(CameraManager manager) => CameraManager = manager;
@@ -63,6 +68,7 @@ namespace ER
             public static void RegisterResourceManager(ResourceManager manager) => ResourceManager = manager;
             public static void RegisterPlayerManager(PlayerManager manager) => PlayerManager = manager;
             public static void RegisterDiplomacyManager(DiplomacyManager manager) => DiplomacyManager = manager;
+            public static void RegisterGovernmentManager(GovernmentManager manager) => GovernmentManager = manager;
             public static void RegisterWorldGeneratorManager(WorldGeneratorManager manager) => WorldGeneratorManager = manager;
             public static void RegisterTileManager(TileManager manager) => TileManager = manager;
             public static void RegisterTileVisualManager(TileVisualManager manager) => TileVisualManager = manager;
@@ -74,6 +80,9 @@ namespace ER
             public static void RegisterDatePanelManager(DatePanelManager manager) => DatePanelManager = manager;
             public static void RegisterGameOverPanelManager(GameOverPanelManager manager) => GameOverPanelManager = manager;
             public static void RegisterMainPanelManager(MainPanelManager manager) => MainPanelManager = manager;
+            public static void RegisterPoliticsPanelManager(PoliticsPanelManager manager) => PoliticsPanelManager = manager;
+            public static void RegisterResourcesPanelManager(ResourcesPanelManager manager) => ResourcesPanelManager = manager;
+            public static void RegisterSelectionPanelManager(SelectionPanelManager manager) => SelectionPanelManager = manager;
             public static void RegisterMainMenuPanelManager(MainMenuPanelManager manager) => MainMenuPanelManager = manager;
 
             void Awake()
@@ -95,27 +104,18 @@ namespace ER
 
             void Start()
             {
-                CultureManager.Initialize();
-
-                PlayerManager.Initialize();
-
-                DiplomacyManager.Initialize();
-
-                WorldGeneratorManager.Initialize();
-
-                TileManager.Initialize();
-
-                TileVisualManager.Initialize();
-
-                UnitVisualPoolManager.Initialize();
-
-                UnitManager.Initialize();
-
-                SelectionManager.Initialize();
-
-                OrdersManager.Initialize();
-
-                VictoryManager.Initialize();
+                if (DateManager != null) DateManager.Initialize();
+                if (CultureManager != null) CultureManager.Initialize();
+                if (PlayerManager != null) PlayerManager.Initialize();
+                if (DiplomacyManager != null) DiplomacyManager.Initialize();
+                if (WorldGeneratorManager != null) WorldGeneratorManager.Initialize();
+                if (TileManager != null) TileManager.Initialize();
+                if (TileVisualManager != null) TileVisualManager.Initialize();
+                if (UnitVisualPoolManager != null) UnitVisualPoolManager.Initialize();
+                if (UnitManager != null) UnitManager.Initialize();
+                if (SelectionManager != null) SelectionManager.Initialize();
+                if (OrdersManager != null) OrdersManager.Initialize();
+                if (VictoryManager != null) VictoryManager.Initialize();
             }
             
             public static void RestartGame()

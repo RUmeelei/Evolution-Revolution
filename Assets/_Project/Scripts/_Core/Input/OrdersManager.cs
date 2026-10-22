@@ -69,19 +69,56 @@ namespace ER
 
             public void Update()
             {
+                if (Input.GetKeyDown(KeyCode.R))
+                {
+                    HandleMobilizationOrder(true);
+                }
+            
+                if (Input.GetKeyDown(KeyCode.T))
+                {
+                    HandleMobilizationOrder(false);
+                }
+            
                 bool isOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
-
+            
                 if (isOverUI) return;
-
+            
                 if (Input.GetMouseButtonUp(1))
                 {
                     Vector2 mousePos = Cam.ScreenToWorldPoint(Input.mousePosition);
-
+            
                     bool isShift = Input.GetKey(KeyCode.LeftShift);
-
+            
                     if (!IsInsideWorld(mousePos)) return;
-
+            
                     HandleUnitsOrder(mousePos, isShift);
+                }
+            }
+            
+            private void HandleMobilizationOrder(bool mobilize)
+            {
+                var units = selectionManager.SelectedUnits;
+            
+                if (units.Count == 0) return;
+            
+                foreach (var unit in units)
+                {
+                    if (unit == null || !unit.IsAlive) continue;
+            
+                    if (unit is not Human human) continue;
+            
+                    var player = cultureManager.GetPlayerForCulture(unit.CultureId);
+            
+                    if (player == null || player.PlayerAI) continue;
+            
+                    if (mobilize)
+                    {
+                        unitManager.MobilizeHuman(human);
+                    }
+                    else
+                    {
+                        unitManager.DemobilizeHuman(human);
+                    }
                 }
             }
 

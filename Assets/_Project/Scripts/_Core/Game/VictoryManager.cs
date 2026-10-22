@@ -239,6 +239,8 @@ namespace ER
                 OnPlayerVictory?.Invoke(winnerPlayerId);
 
                 OnGameOver?.Invoke();
+
+                if (simulationManager != null) simulationManager.Pause();
             }
         }
     }

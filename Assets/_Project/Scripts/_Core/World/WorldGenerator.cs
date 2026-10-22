@@ -67,7 +67,9 @@ namespace ER
 
                 if (WorldCreationData.AICulturesCount > 0)
                 {
-                    List<string> aiCultureIds = GenerateAICultures(WorldCreationData.AICulturesCount);
+                    int count = mainConfig.SpectatorMode ? WorldCreationData.AICulturesCount + 1 : WorldCreationData.AICulturesCount;
+
+                    List<string> aiCultureIds = GenerateAICultures(count);
 
                     CreateAIPlayers(aiCultureIds);
                 }
@@ -86,18 +88,33 @@ namespace ER
 
                 for (int i = 0; i < count; i++)
                 {
-                    string name = GenerateCultureName();
+                    string chosenName = !string.IsNullOrEmpty(CultureCreationData.Name) ? CultureCreationData.Name : GenerateCultureName();
+                    string chosenDesc = !string.IsNullOrEmpty(CultureCreationData.Description) ? CultureCreationData.Description : "A unique culture.";
 
-                    Color color = Random.ColorHSV(0f, 1f, 0f, 1f, 0f, 1f);
+                    Color chosenColor = (CultureCreationData.Color.a > 0.01f && (CultureCreationData.Color.r + CultureCreationData.Color.g + CultureCreationData.Color.b > 0.05f)) ? CultureCreationData.Color : Random.ColorHSV(0.2f, 1f, 0.5f, 1f, 0.6f, 1f);
 
                     var culture = cultureManager.CreateCulture(
-                        cultureName: CultureCreationData.Name,
-                        cultureDescription: CultureCreationData.Description,
-                        cultureColor: color
-                        // cultureColor: CultureCreationData.Color
+                        cultureColor: chosenColor,
+                        cultureName: chosenName,
+                        cultureDescription: chosenDesc
                     );
 
-                    cultureManager.AddRandomTraits(culture.CultureId);
+                    culture.CultureEthnicity = CultureCreationData.CultureEthnicity;
+                    
+                    if (CultureCreationData.CultureTraits != null && CultureCreationData.CultureTraits.Count > 0)
+                    {
+                        foreach (var trait in CultureCreationData.CultureTraits)
+                        {
+                            if (trait != null)
+                            {
+                                cultureManager.AddCultureTrait(trait.TraitId, culture.CultureId, trait.DefaultInfluence);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        cultureManager.AddRandomTraits(culture.CultureId);
+                    }
 
                     cultureIds.Add(culture.CultureId);
                 }
@@ -183,7 +200,7 @@ namespace ER
 
                     playerManager.AttachPlayerCulture(player.PlayerId, cultureIds[i]);
 
-                    player.GatherResource("Fruits", 100f);
+                    GrantStartingResources(player);
                 }
             }
 
@@ -198,7 +215,22 @@ namespace ER
 
                     playerManager.AttachPlayerCulture(player.PlayerId, cultureIds[i]);
 
-                    player.GatherResource("Fruits", 100f);
+                    GrantStartingResources(player);
+                }
+            }
+
+            private void GrantStartingResources(PlayerData player)
+            {
+                if (player == null || mainConfig == null) return;
+
+                player.GatherResource("Fruits", mainConfig.StartFood);
+                player.GatherResource("Wood", mainConfig.StartWood);
+                player.GatherResource("Stone", mainConfig.StartStone);
+                player.GatherResource("Iron", mainConfig.StartIron);
+
+                if (mainConfig.StartMoney > 0f)
+                {
+                    player.GatherResource("Money", mainConfig.StartMoney);
                 }
             }
 

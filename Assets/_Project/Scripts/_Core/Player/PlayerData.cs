@@ -5,7 +5,7 @@ namespace ER
 {
     namespace Players
     {
-        // using Government;
+        using Politics.Internal.Government;
         using Culture;
         using Resources;
 
@@ -38,7 +38,7 @@ namespace ER
 
             public Dictionary<string, ResourceData> PlayerResources = new Dictionary<string, ResourceData>();
 
-            private ResourceData GetOrCreateResource(string resourceId)
+            public ResourceData GetOrCreateResource(string resourceId)
             {
                 if (!PlayerResources.TryGetValue(resourceId, out var resource))
                 {
@@ -50,12 +50,17 @@ namespace ER
                 return resource;
             }
 
-            public float GetFood()
-            {
-                var resource = GetOrCreateResource("Fruits");
+            public float GetFood() => GetOrCreateResource("Fruits").Amount;
 
-                return resource.Amount;
-            }
+            public float GetIron() => GetOrCreateResource("Iron").Amount;
+            
+            public float GetMaterials() => GetIron();
+            
+            public float GetWood() => GetOrCreateResource("Wood").Amount;
+            
+            public float GetStone() => GetOrCreateResource("Stone").Amount;
+            
+            public float GetMoney() => GetOrCreateResource("Money").Amount;
 
             public void GatherResource(string resourceId, float amount)
             {

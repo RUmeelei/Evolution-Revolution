@@ -13,10 +13,11 @@ namespace ER
         using Players;
         using World.Tiles;
         using Unit;
+        using Politics.External.Diplomacy;
 
         public class CultureManager : MonoBehaviour
         {
-            public static CultureManager Instance {get; private set;}
+            public static CultureManager Instance { get; private set; }
 
             [Header("Main")]
             public bool EnableLogging;
@@ -66,13 +67,14 @@ namespace ER
             void Start()
             {
                 simulationManager = CoreManager.SimulationManager;
-
                 playerManager = CoreManager.PlayerManager;
 
-                playerManager.OnPlayerTick += ProcessCultureTick;
+                if (playerManager != null)
+                {
+                    playerManager.OnPlayerTick += ProcessCultureTick;
+                }
 
                 tileManager = CoreManager.TileManager;
-
                 unitManager = CoreManager.UnitManager;
             }
 
@@ -84,12 +86,13 @@ namespace ER
             public void Initialize()
             {
                 mainConfig = CoreManager.MainConfig;
-                
                 LoadTraitsFromResources();
             }
 
             private void LoadTraitsFromResources()
             {
+                if (CultureTraitsList == null) return;
+
                 foreach (var trait in CultureTraitsList)
                 {
                     if (trait != null && !CultureTraitTemplatesDictionary.ContainsKey(trait.TraitId))
@@ -109,20 +112,15 @@ namespace ER
                 {
                     CultureNumericId = numericId,
                     CultureId = cultureId,
-
-                    CultureName = cultureName,
+                    CultureName = string.IsNullOrEmpty(cultureName) ? $"Culture {numericId}" : cultureName,
                     CultureDescription = cultureDescription,
-
                     CultureIdentity = 100f,
                     CultureDefeated = false,
-
                     CultureColor = cultureColor,
-
                     Stance = CultureStance.Passive,
                 };
 
                 Cultures.Add(culture);
-
                 CulturesDictionary[cultureId] = culture;
 
                 NextCultureId = Cultures.Count > 0 ? Cultures.Max(c => c.CultureNumericId) + 1 : 1;
@@ -134,8 +132,8 @@ namespace ER
 
             public CultureData GetCulture(string id)
             {
+                if (string.IsNullOrEmpty(id)) return null;
                 CulturesDictionary.TryGetValue(id, out var culture);
-                
                 return culture;
             }
 
@@ -146,9 +144,7 @@ namespace ER
 
             public PlayerData GetPlayerForCulture(string cultureId)
             {
-                var player = playerManager.GetActivePlayers().Find(p => p.PlayerCulture.CultureId == cultureId);
-
-                return player;
+                return playerManager != null ? playerManager.GetPlayerForCulture(cultureId) : null;
             }
 
             public List<CultureData> GetActiveCultures()
@@ -166,6 +162,8 @@ namespace ER
 
                 culture.CultureDefeated = true;
 
+                culture.CultureIdentity = 0;
+
                 Debug.Log($"{culture.CultureName} has been defeated");
 
                 OnCultureDefeated?.Invoke(id);
@@ -175,22 +173,16 @@ namespace ER
             {
                 if (CultureTraitTemplatesDictionary.ContainsKey(traitId))
                 {
-                    Debug.LogWarning($"Trait {traitId} already exists");
-
                     return CultureTraitTemplatesDictionary[traitId];
                 }
 
                 var trait = ScriptableObject.CreateInstance<CultureTrait>();
-
                 trait.TraitId = traitId;
-
                 trait.TraitName = traitName;
                 trait.Description = traitDescription;
 
                 CultureTraitTemplates.Add(trait);
                 CultureTraitTemplatesDictionary[traitId] = trait;
-
-                Debug.Log($"Created trait template: {traitName}");
 
                 return trait;
             }
@@ -198,39 +190,23 @@ namespace ER
             public CultureTrait GetTraitTemplate(string id)
             {
                 CultureTraitTemplatesDictionary.TryGetValue(id, out var trait);
-
                 return trait;
             }
-            
-            public void AddCultureTrait(string traitId, string cultureId, float initialInfluence = 0f)
+
+            public void AddCultureTrait(string traitId, string cultureId, float initialInfluence = -1f)
             {
                 var template = GetTraitTemplate(traitId);
-
                 var culture = GetCulture(cultureId);
 
-                if (template == null)
-                {
-                    Debug.LogError($"Trait template {traitId} not found");
+                if (template == null || culture == null) return;
 
-                    return;
-                }
-
-                if (culture == null)
-                {
-                    Debug.LogError($"Culture {cultureId} not found");
-
-                    return;
-                }
+                float startInfluence = initialInfluence >= 0f ? initialInfluence : template.DefaultInfluence;
 
                 if (!culture.CultureTraits.ContainsKey(traitId))
                 {
-                    culture.CultureTraits.Add(traitId, new CultureTraitData(true, initialInfluence));
+                    culture.CultureTraits.Add(traitId, new CultureTraitData(true, startInfluence));
 
                     Debug.Log($"Added {template.TraitName} to {culture.CultureName}");
-                }
-                else
-                {
-                    Debug.LogWarning($"{culture.CultureName} already has {template.TraitName}");
                 }
             }
 
@@ -248,7 +224,7 @@ namespace ER
             {
                 var culture = GetCulture(cultureId);
 
-                if (CultureTraitTemplates == null || CultureTraitTemplates.Count == 0) return;
+                if (culture == null || CultureTraitTemplates == null || CultureTraitTemplates.Count == 0) return;
 
                 int traitCount = UnityEngine.Random.Range(mainConfig.MinStartTraits, mainConfig.MaxStartTraits);
 
@@ -256,7 +232,7 @@ namespace ER
 
                 foreach (var trait in shuffled)
                 {
-                    culture.AddTrait(trait.TraitId, 0f);
+                    culture.AddTrait(trait.TraitId, trait.DefaultInfluence);
                 }
             }
 
@@ -293,6 +269,8 @@ namespace ER
 
             public void ProcessCultureTick(float delta)
             {
+                if (tileManager != null) tileManager.ProcessRegionalInfluence(delta);
+
                 OnCultureTick?.Invoke(delta);
 
                 CultureAITimer += delta;
@@ -300,7 +278,7 @@ namespace ER
                 if (CultureAITimer >= CultureAIInterval)
                 {
                     CultureAITimer = 0f;
-            
+
                     ProcessCultureAI();
                 }
 
@@ -308,74 +286,186 @@ namespace ER
                 {
                     if (culture.CultureDefeated) continue;
 
-                    float change = UnityEngine.Random.Range(-10f, 10f);
+                    var units = unitManager != null ? unitManager.GetUnitsByCulture(culture.CultureId) : null;
+                    int unitCount = units != null ? units.Count : 0;
+                    int culturalTiles = tileManager.GetTileCountForCulture(culture.CultureId);
+                    int stateTiles = tileManager.GetTileCountForOwner(culture.CultureId);
 
-                    float foodInfluence = 0f;
-                    float traitInfluence = 0f;
-
-                    var players = playerManager.GetActivePlayers();
-
-                    foreach (var player in players)
+                    if (culture.CultureIdentity <= 0f || (unitCount == 0 && culturalTiles == 0))
                     {
+                        DefeatCulture(culture.CultureId);
 
-                        var resources = player.PlayerResources;
+                        continue;
+                    }
+                    
+                    Vector2Int oldCapPos = culture.CultureCapital;
+                    TileData capitalTile = tileManager.GetTile(oldCapPos.x, oldCapPos.y);
 
-                        var food = player.GetFood();
+                    bool hasValidCapital = true;
 
-                        if (food <= 25f)
+                    if (capitalTile.Owner != culture.CultureId)
+                    {
+                        var newCapital = tileManager.FindNewCultureCapital(culture.CultureId);
+
+                        if (newCapital.HasValue)
                         {
-                            float penalty = 25f / food;
+                            Vector2 oldCapitalCenter = tileManager.GetTileCenter(oldCapPos.x, oldCapPos.y);
+                            culture.SetCultureCapital(newCapital.Value);
 
-                            foodInfluence += Mathf.Clamp(penalty, 0f, 10f);
+                            tileManager.NotifyTileChanged(oldCapPos.x, oldCapPos.y);
+                            tileManager.NotifyTileChanged(newCapital.Value.x, newCapital.Value.y);
+
+                            if (Vector2.Distance(culture.RallyPoint, oldCapitalCenter) < 2f)
+                            {
+                                culture.RallyPoint = tileManager.GetTileCenter(newCapital.Value.x, newCapital.Value.y);
+                            }
+                            
+                            ChangeCultureIdentity(culture.CultureId, -5f);
                         }
-                        else if (food >= 125f)
+                        else
                         {
-                            float bonus = food / 200f;
-
-                            foodInfluence -= Mathf.Clamp(bonus, 0f, 5f);
+                            hasValidCapital = false;
                         }
                     }
                     
-                    foreach (var traitEntry in culture.CultureTraits)
-                    {
-                        string traitId = traitEntry.Key;
-
-                        CultureTraitData traitData = traitEntry.Value;
-
-                        if (!traitData.IsActive) continue;
-
-                        float traitChange = UnityEngine.Random.Range(-0.2f, 1f);
-
-                        if (traitEntry.Key == "BarbarianNation")
-                        {
-                            traitChange += UnityEngine.Random.Range(-0.5f, 3f);
-                        }
-                        
-                        if (traitEntry.Key == "NomadicNation")
-                        {
-                            traitChange += UnityEngine.Random.Range(-0.5f, 3f);
-                        }
-                        
-                        traitData.UpdateInfluence(delta, traitChange);
-                        
-                        if (traitData.HasSignificantInfluence(20f))
-                        {
-                            float penalty = UnityEngine.Random.Range(traitData.Influence * 0.01f, traitData.Influence * 0.1f);
-
-                            traitInfluence += penalty;
-                        }
-                    }
+                    float targetIdentity = CalculateTargetIdentity(culture, units, unitCount, culturalTiles, hasValidCapital, delta);
                     
-                    change -= foodInfluence;
-                    change -= traitInfluence;
+                    float diff = targetIdentity - culture.CultureIdentity;
 
-                    ChangeCultureIdentity(culture.CultureId, change * delta);
+                    if (Mathf.Abs(diff) > 0.05f)
+                    {
+                        float convergenceRate = diff > 0f ? 0.06f : 0.05f;
+                        float maxStepPerSec = diff > 0f ? 1.2f : 1.5f;
+
+                        float speed = Mathf.Clamp(diff * convergenceRate, -maxStepPerSec, maxStepPerSec);
+
+                        ChangeCultureIdentity(culture.CultureId, speed * delta);
+                    }
                 }
             }
+
+            private float CalculateTargetIdentity(CultureData culture, List<Unit> units, int unitCount, int tileCount, bool hasValidCapital, float delta)
+            {
+                var gov = CoreManager.GovernmentManager != null ? CoreManager.GovernmentManager.GetGovernment(culture.CultureId) : null;
+                bool isMarauders = gov != null && gov.Type == Politics.Internal.Government.OrganizationType.Marauders;
+                
+                if (unitCount == 0) return 0f;
+                
+                if (tileCount == 0 && !isMarauders) return 0f;
+                
+                float target = 80f;
+
+                if (!hasValidCapital && !isMarauders)
+                {
+                    target -= 35f;
+                }
+                
+                int settlementsCount = 0;
+                int supportStructuresCount = 0;
+
+                if (tileManager != null)
+                {
+                    foreach (var pos in tileManager.GetStructureTiles())
+                    {
+                        TileData st = tileManager.GetTile(pos.x, pos.y);
+                        if (st.Owner != culture.CultureId) continue;
+
+                        if (st.Structure == TileStructureType.Settlement) settlementsCount++;
+                        else if (st.Structure != TileStructureType.None) supportStructuresCount++;
+                    }
+                }
+
+                int stateTiles = tileManager.GetTileCountForOwner(culture.CultureId);
+                int supportedTiles = 35 + (settlementsCount * 25) + (supportStructuresCount * 8);
+                
+                target += Mathf.Min(12f, settlementsCount * 4f);
+
+                if (stateTiles > supportedTiles)
+                {
+                    float overextension = stateTiles - supportedTiles;
+                    target -= Mathf.Min(25f, overextension * 0.8f);
+                }
+                
+                int unassimilatedTiles = Mathf.Max(0, stateTiles - tileCount);
+
+                if (unassimilatedTiles > 0)
+                {
+                    target -= Mathf.Min(15f, unassimilatedTiles * 0.6f);
+                }
+                
+                var player = GetPlayerForCulture(culture.CultureId);
+                if (player != null)
+                {
+                    float food = player.GetFood();
+                    float comfortableReserve = Mathf.Max(20f, unitCount * 5f);
+
+                    if (food <= 1f)
+                    {
+                        target -= 40f;
+                    }
+                    else if (food < comfortableReserve * 0.5f)
+                    {
+                        target -= 12f;
+                    }
+                    else if (food >= comfortableReserve)
+                    {
+                        target += 12f;
+                    }
+                }
+                
+                bool isAtWar = DiplomacyManager.Instance != null && DiplomacyManager.Instance.HasAnyWar(culture.CultureId);
+
+                int militaryCount = 0;
+                if (units != null)
+                {
+                    for (int i = 0; i < units.Count; i++)
+                    {
+                        if (units[i].IsAlive && units[i] is Human h && h.Group == PopulationGroup.Military) militaryCount++;
+                    }
+                }
+
+                float militaryRatio = unitCount > 0 ? (float)militaryCount / unitCount : 0f;
+
+                if (isAtWar)
+                {
+                    target -= 10f;
+                }
+
+                if (militaryRatio > 0.6f)
+                {
+                    target -= (militaryRatio - 0.6f) * 25f;
+                }
+                
+                foreach (var traitEntry in culture.CultureTraits)
+                {
+                    string traitId = traitEntry.Key;
+                    CultureTraitData traitData = traitEntry.Value;
+
+                    if (!traitData.IsActive) continue;
+
+                    traitData.UpdateInfluence(delta, 0.35f);
+                    float factor = traitData.Influence / 100f;
+
+                    if (traitId == "BarbarianNation")
+                    {
+                        target += isAtWar ? (12f * factor) : (-8f * factor);
+                    }
+                    else if (traitId == "NomadicNation")
+                    {
+                        target += (tileCount > 40) ? (-15f * factor) : (8f * factor);
+                    }
+                }
+
+                return Mathf.Clamp(target, 0f, 100f);
+            }
+
             private void ProcessCultureAI()
             {
-                if (tileManager == null) return;
-                if (unitManager == null) return;
+                if (tileManager == null) tileManager = CoreManager.TileManager;
+
+                if (unitManager == null) unitManager = CoreManager.UnitManager;
+
+                if (tileManager == null || unitManager == null) return;
 
                 foreach (var culture in Cultures)
                 {

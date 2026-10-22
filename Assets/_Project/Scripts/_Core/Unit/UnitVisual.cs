@@ -1,5 +1,4 @@
 using UnityEngine;
-using System.Collections.Generic;
 
 namespace ER
 {
@@ -16,12 +15,16 @@ namespace ER
         {
             [Header("Main")]
             public bool EnableLogging;
-            
+
+            private static Material sharedLineMaterial;
+
             private SpriteRenderer SpriteRenderer;
             private Unit Unit;
             private UnitSpriteSet Sprites;
             private UnitSpriteDirection CurrentDirection = UnitSpriteDirection.Down;
             private Color CultureColor = Color.white;
+
+            private bool isDying = false;
 
             private float BlinkTimer = 0f;
             private bool IsBlinking = false;
@@ -32,25 +35,102 @@ namespace ER
             private Coroutine attackFlashCoroutine;
 
             private MainConfig mainConfig;
-
             private SimulationManager simulationManager;
             private UnitVisualPoolManager unitVisualPoolManager;
             private SelectionManager selectionManager;
             private CultureManager cultureManager;
 
+            private LineRenderer selectionCircle;
+
             void Awake()
             {
                 SpriteRenderer = GetComponent<SpriteRenderer>();
+                SetupSelectionCircle();
             }
 
             void Start()
             {
-                mainConfig = CoreManager.MainConfig;
-                
-                unitVisualPoolManager = CoreManager.UnitVisualPoolManager;
+                if (mainConfig == null) mainConfig = CoreManager.MainConfig;
+                if (unitVisualPoolManager == null) unitVisualPoolManager = CoreManager.UnitVisualPoolManager;
             }
 
             void OnDestroy()
+            {
+                UnsubscribeUnitEvents();
+                if (simulationManager != null) simulationManager.OnTick -= UpdateBlink;
+            }
+
+            void Update()
+            {
+                if (Unit == null || isDying) return;
+
+                if (selectionCircle != null && selectionCircle.enabled != Unit.IsSelected)
+                {
+                    selectionCircle.enabled = Unit.IsSelected;
+                }
+
+                Vector3 targetPos = new Vector3(Unit.Position.x, Unit.Position.y, 0f);
+                Vector3 currentPos = transform.position;
+                Vector3 diff = targetPos - currentPos;
+
+                if (diff.sqrMagnitude > 0.0001f)
+                {
+                    UpdateDirection(new Vector2(diff.x, diff.y).normalized);
+                    float smooth = mainConfig != null ? mainConfig.UnitSmoothSpeed : 12f;
+                    transform.position = Vector3.Lerp(currentPos, targetPos, smooth * Time.deltaTime);
+                }
+                else
+                {
+                    transform.position = targetPos;
+                }
+
+                if (!IsAttackFlashing && SpriteRenderer.color != CultureColor)
+                {
+                    SpriteRenderer.color = CultureColor;
+                }
+            }
+
+            public void Initialize(Unit unit, UnitSpriteSet sprites)
+            {
+                mainConfig = CoreManager.MainConfig;
+                unitVisualPoolManager = CoreManager.UnitVisualPoolManager;
+                simulationManager = CoreManager.SimulationManager;
+                selectionManager = CoreManager.SelectionManager;
+                cultureManager = CoreManager.CultureManager;
+
+                UnsubscribeUnitEvents();
+
+                Unit = unit;
+                Sprites = sprites;
+                isDying = false;
+                IsAttackFlashing = false;
+                
+                float scale = mainConfig != null && mainConfig.UnitVisualScale > 0.02f ? mainConfig.UnitVisualScale : 0.22f;
+
+                transform.position = new Vector3(unit.Position.x, unit.Position.y, 0f);
+                transform.localScale = new Vector3(scale, scale, 1f);
+
+                SetDirection(UnitSpriteDirection.Down);
+
+                BlinkTimer = Random.Range(0f, BlinkInterval);
+
+                var culture = cultureManager != null ? cultureManager.GetCulture(unit.CultureId) : null;
+                CultureColor = (culture != null) ? culture.CultureColor : Color.white;
+                SpriteRenderer.color = CultureColor;
+
+                Unit.OnPositionChanged += OnUnitPositionChanged;
+                Unit.OnHealthChanged += OnUnitHealthChanged;
+                Unit.OnDied += OnUnitDied;
+                Unit.OnAttacked += OnUnitAttacked;
+
+                if (simulationManager != null)
+                {
+                    simulationManager.OnTick -= UpdateBlink;
+                    simulationManager.OnTick += UpdateBlink;
+                }
+            }
+
+            private void UnsubscribeUnitEvents()
             {
                 if (Unit != null)
                 {
@@ -60,90 +140,45 @@ namespace ER
                     Unit.OnAttacked -= OnUnitAttacked;
                     Unit = null;
                 }
-
-                if (simulationManager != null) simulationManager.OnTick -= UpdateBlink;
             }
 
-            void Update()
+            private void SetupSelectionCircle()
             {
-                if (Unit == null) return;
-                
-                Vector3 targetPos = new Vector3(Unit.Position.x, Unit.Position.y, 0);
-                Vector3 currentPos = transform.position;
+                GameObject circleObj = new GameObject("SelectionCircle");
+                circleObj.transform.SetParent(transform);
+                circleObj.transform.localPosition = new Vector3(0f, -0.1f, 0f);
 
-                if (Vector3.Distance(currentPos, targetPos) > 0.01f)
+                selectionCircle = circleObj.AddComponent<LineRenderer>();
+                selectionCircle.useWorldSpace = false;
+                selectionCircle.loop = true;
+                selectionCircle.startWidth = 0.06f;
+                selectionCircle.endWidth = 0.06f;
+                selectionCircle.positionCount = 24;
+
+                if (sharedLineMaterial == null)
                 {
-                    Vector2 direction = (targetPos - currentPos).normalized;
-
-                    UpdateDirection(direction);
-
-                    transform.position = Vector3.Lerp(currentPos, targetPos, mainConfig.UnitSmoothSpeed * Time.deltaTime);
+                    sharedLineMaterial = new Material(Shader.Find("Sprites/Default"));
                 }
-                else
+                selectionCircle.sharedMaterial = sharedLineMaterial;
+
+                selectionCircle.startColor = Color.green;
+                selectionCircle.endColor = Color.green;
+                selectionCircle.sortingLayerName = SpriteRenderer.sortingLayerName;
+                selectionCircle.sortingOrder = 0;
+
+                float radius = 0.15f;
+                
+                for (int i = 0; i < 24; i++)
                 {
-                    transform.position = targetPos;
+                    float angle = i * Mathf.PI * 2f / 24f;
+                    selectionCircle.SetPosition(i, new Vector3(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius * 0.6f, -0.01f));
                 }
 
-                if (!IsAttackFlashing)
-                {
-                    if (Unit.IsSelected)
-                    {
-                        SpriteRenderer.color = Color.green;
-                    }
-                    else if (Unit.GetCurrentHealthPercent() < 0.4f)
-                    {
-                        float pulse = Mathf.PingPong(Time.time * 3f, 1f);
-
-                        SpriteRenderer.color = Color.Lerp(CultureColor, Color.white, pulse * 0.5f);
-                    }
-                    else
-                    {
-                        SpriteRenderer.color = CultureColor;
-                    }
-                }
+                selectionCircle.enabled = false;
             }
 
-            public void Initialize(Unit unit, UnitSpriteSet sprites)
-            {
-                simulationManager = CoreManager.SimulationManager;
-
-                selectionManager = CoreManager.SelectionManager;
-
-                cultureManager = CoreManager.CultureManager;
-
-                Unit = unit;
-
-                Sprites = sprites;
-
-                transform.position = new Vector3(unit.Position.x, unit.Position.y, 0);
-
-                SetDirection(UnitSpriteDirection.Down);
-
-                BlinkTimer = Random.Range(0f, BlinkInterval);
-
-                var culture = cultureManager.GetCulture(unit.CultureId);
-
-                CultureColor = (culture != null) ? culture.CultureColor : Color.white;
-
-                SpriteRenderer.color = CultureColor;
-                
-                Unit.OnPositionChanged += OnUnitPositionChanged;
-                Unit.OnHealthChanged += OnUnitHealthChanged;
-                Unit.OnDied += OnUnitDied;
-                Unit.OnAttacked += OnUnitAttacked;
-
-                simulationManager.OnTick += UpdateBlink;
-            }
-
-            private void OnUnitPositionChanged(Vector2 position)
-            {
-                
-            }
-
-            private void OnUnitHealthChanged(float health)
-            {
-                
-            }
+            private void OnUnitPositionChanged(Vector2 position) { }
+            private void OnUnitHealthChanged(float health) { }
 
             private void OnUnitDied()
             {
@@ -151,27 +186,23 @@ namespace ER
                 {
                     Unit.OnDied -= OnUnitDied;
                 }
-                
-                if (!gameObject.activeInHierarchy) return;
 
+                if (!gameObject.activeInHierarchy) return;
                 StartCoroutine(DeathAnimation());
             }
 
             private void OnUnitAttacked(Unit target)
             {
-                if (!gameObject.activeInHierarchy) return;
-                
-                if (attackFlashCoroutine != null)
-                {
-                    StopCoroutine(attackFlashCoroutine);
-                }
+                if (target?.UnitVisual == null || !target.UnitVisual.gameObject.activeInHierarchy) return;
 
-                attackFlashCoroutine = StartCoroutine(AttackFlash());
+                target.UnitVisual.TriggerHitFlash();
             }
 
             private System.Collections.IEnumerator DeathAnimation()
             {
                 if (this == null || !gameObject.activeInHierarchy) yield break;
+
+                isDying = true;
 
                 float timer = 0f;
                 float duration = 0.5f;
@@ -193,26 +224,35 @@ namespace ER
                     yield return null;
                 }
 
+                isDying = false;
                 if (unitVisualPoolManager != null) unitVisualPoolManager.Return(this);
             }
 
-            private System.Collections.IEnumerator AttackFlash()
+            public void TriggerHitFlash()
             {
-                if (this == null || !gameObject.activeInHierarchy) yield break;
-
+                if (!gameObject.activeInHierarchy) return;
+            
+                if (attackFlashCoroutine != null)
+                {
+                    StopCoroutine(attackFlashCoroutine);
+                }
+            
+                attackFlashCoroutine = StartCoroutine(HitFlashRoutine());
+            }
+            
+            private System.Collections.IEnumerator HitFlashRoutine()
+            {
                 IsAttackFlashing = true;
-
                 SpriteRenderer.color = Color.yellow;
-
+            
                 yield return new WaitForSeconds(0.15f);
-
+            
                 IsAttackFlashing = false;
-
                 attackFlashCoroutine = null;
-
+            
                 if (Unit != null && Unit.IsAlive)
                 {
-                    SpriteRenderer.color = Unit.IsSelected ? Color.green : CultureColor;
+                    SpriteRenderer.color = CultureColor;
                 }
             }
 
@@ -221,32 +261,26 @@ namespace ER
                 if (attackFlashCoroutine != null)
                 {
                     StopCoroutine(attackFlashCoroutine);
-                    
+
                     attackFlashCoroutine = null;
                 }
 
-                if (Unit != null)
-                {
-                    Unit.OnPositionChanged -= OnUnitPositionChanged;
-                    Unit.OnHealthChanged -= OnUnitHealthChanged;
-                    Unit.OnDied -= OnUnitDied;
-                    Unit.OnAttacked -= OnUnitAttacked;
-                    Unit = null;
-                }
+                UnsubscribeUnitEvents();
 
                 if (simulationManager != null) simulationManager.OnTick -= UpdateBlink;
 
+                isDying = false;
+
                 IsAttackFlashing = false;
 
-                SpriteRenderer.color = Color.white;
+                if (selectionCircle != null) selectionCircle.enabled = false;
 
-                gameObject.SetActive(false);
+                SpriteRenderer.color = Color.white;
             }
 
             public void UpdateSprites(UnitSpriteSet newSprites)
             {
                 Sprites = newSprites;
-
                 SetDirection(CurrentDirection);
             }
 

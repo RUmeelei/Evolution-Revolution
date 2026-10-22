@@ -16,4 +16,7 @@ MonoBehaviour:
   BaseAttackRange: 0.5
   BaseAttackCooldown: 1
   AggroRadius: 2
+  AdrenalineHealthThreshold: 0.3
+  AdrenalineSpeedMultiplier: 1.05
+  MinHealthSpeedFactor: 0.5
   EnableCombatLogging: 0

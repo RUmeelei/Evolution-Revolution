@@ -11,10 +11,9 @@ namespace ER
             using Core;
             using Configs;
             using Simulation;
-            // using Government;
             using Culture;
-            using Resources;
-            using Unit;
+            using Players;
+            using Politics.External.Diplomacy;
 
             public class TileManager : MonoBehaviour
             {
@@ -31,6 +30,12 @@ namespace ER
                 public event Action<int, int> OnTileChanged;
 
                 private Dictionary<string, int> tilesByOwner = new Dictionary<string, int>();
+                private Dictionary<string, int> tilesByCulture = new Dictionary<string, int>();
+                
+                private HashSet<Vector2Int> activeCaptureTiles = new HashSet<Vector2Int>();
+                private HashSet<Vector2Int> structureTiles = new HashSet<Vector2Int>();
+                private HashSet<Vector2Int> roadTiles = new HashSet<Vector2Int>();
+                private Dictionary<Vector2Int, Dictionary<string, float>> influenceAccumulator = new Dictionary<Vector2Int, Dictionary<string, float>>();
 
                 private TileData[] Tiles;
 
@@ -59,22 +64,10 @@ namespace ER
                     CoreManager.RegisterTileManager(this);
                 }
 
-                void Start()
-                {
-                    
-                }
-
-                void OnDestroy()
-                {
-                    
-                }
-
                 public void Initialize()
                 {
                     mainConfig = CoreManager.MainConfig;
-
                     cultureManager = CoreManager.CultureManager;
-
                     tileVisualManager = CoreManager.TileVisualManager;
 
                     Width = WorldCreationData.WorldSize;
@@ -90,71 +83,634 @@ namespace ER
                     }
                 }
 
+                private struct TectonicPlate
+                {
+                    public Vector2 Center;
+                    public bool IsContinental;
+                    public float BaseElevation;
+                }
+
                 private void GenerateWorld()
                 {
                     tilesByOwner.Clear();
+                    tilesByCulture.Clear();
+                    activeCaptureTiles.Clear();
+                    structureTiles.Clear();
+                    roadTiles.Clear();
+
+                    Tiles = WorldMapGenerator.GetOrGenerateWorldData(Width, Height, mainConfig, WorldMapGenerator.CurrentSeed);
+                }
+
+                private void GenerateCultureCapitals()
+                {
+                    var activeCultures = cultureManager.GetActiveCultures();
+
+                    List<Vector2Int> placedCapitals = new List<Vector2Int>();
+
+                    float desiredMinDist = Mathf.Max(3f, Width * 0.12f);
+
+                    foreach (var culture in activeCultures)
+                    {
+                        int bestX = -1;
+                        int bestY = -1;
+                        float bestScore = -9999f;
+
+                        for (int y = 1; y < Height - 1; y++)
+                        {
+                            for (int x = 1; x < Width - 1; x++)
+                            {
+                                int i = y * Width + x;
+
+                                if (Tiles[i].Owner != "CUL_NONE") continue;
+
+                                Vector2Int candidatePos = new Vector2Int(x, y);
+
+                                float nearestCapDist = 999f;
+
+                                foreach (var cap in placedCapitals)
+                                {
+                                    float d = Vector2Int.Distance(candidatePos, cap);
+                                    if (d < nearestCapDist) nearestCapDist = d;
+                                }
+                                
+                                if (nearestCapDist < 2f) continue;
+
+                                float capitalScore = UnityEngine.Random.Range(0f, 2f);
+
+                                if (nearestCapDist >= desiredMinDist) capitalScore += 20f;
+                                else capitalScore += nearestCapDist * 2f;
+
+                                if (Tiles[i].Type == TileType.Grass) capitalScore += 15f;
+                                else if (Tiles[i].Type == TileType.Sand) capitalScore += 8f;
+                                else if (Tiles[i].Type == TileType.Rock) capitalScore += 5f;
+                                else if (Tiles[i].Type == TileType.Water) capitalScore -= 30f;
+
+                                if (capitalScore > bestScore)
+                                {
+                                    bestScore = capitalScore;
+                                    bestX = x;
+                                    bestY = y;
+                                }
+                            }
+                        }
+
+                        if (bestX == -1)
+                        {
+                            bestX = UnityEngine.Random.Range(1, Width - 1);
+                            bestY = UnityEngine.Random.Range(1, Height - 1);
+                        }
+                        
+                        if (GetTile(bestX, bestY).Type == TileType.Water)
+                        {
+                            SetTileType(bestX, bestY, TileType.Grass);
+                            SetTileElevation(bestX, bestY, 4.0f);
+                        }
+
+                        SetTileOwner(bestX, bestY, culture.CultureId);
+
+                        culture.SetCultureCapital(new Vector2Int(bestX, bestY));
+
+                        placedCapitals.Add(new Vector2Int(bestX, bestY));
+                    }
+                }
+
+                public bool CanAffordStructure(TileStructureType structureType, PlayerData player)
+                {
+                    if (player == null || mainConfig == null) return false;
+
+                    return structureType switch
+                    {
+                        TileStructureType.Outpost => player.GetWood() >= mainConfig.OutpostWoodCost && player.GetStone() >= mainConfig.OutpostStoneCost,
+                        TileStructureType.LogisticsHub => player.GetWood() >= mainConfig.HubWoodCost && player.GetStone() >= mainConfig.HubStoneCost,
+                        TileStructureType.Settlement => player.GetWood() >= mainConfig.SettlementWoodCost && player.GetStone() >= mainConfig.SettlementStoneCost && player.GetIron() >= mainConfig.SettlementIronCost,
+                        _ => false
+                    };
+                }
+
+                public static float GetStructureBuildCost(TileStructureType structureType)
+                {
+                    return structureType switch
+                    {
+                        TileStructureType.Outpost => 20f,
+                        TileStructureType.LogisticsHub => 25f,
+                        TileStructureType.Settlement => 40f,
+                        _ => 0f
+                    };
+                }
+
+                public bool TryBuildStructure(int x, int y, TileStructureType structureType, PlayerData player)
+                {
+                    if (x < 0 || x >= Width || y < 0 || y >= Height) return false;
+                    if (player == null || player.PlayerCulture == null) return false;
+                
+                    TileData tile = GetTile(x, y);
+                
+                    if (tile.Type == TileType.Water) return false;
+                    if (tile.Owner != player.PlayerCulture.CultureId) return false;
+                    if (tile.Structure == structureType) return false;
+                
+                    if (!CanAffordStructure(structureType, player)) return false;
+                
+                    switch (structureType)
+                    {
+                        case TileStructureType.Outpost:
+                            player.SpendResource("Wood", mainConfig.OutpostWoodCost);
+                            player.SpendResource("Stone", mainConfig.OutpostStoneCost);
+
+                            break;
+                
+                        case TileStructureType.LogisticsHub:
+                            player.SpendResource("Wood", mainConfig.HubWoodCost);
+                            player.SpendResource("Stone", mainConfig.HubStoneCost);
+
+                            break;
+                
+                        case TileStructureType.Settlement:
+                            player.SpendResource("Wood", mainConfig.SettlementWoodCost);
+                            player.SpendResource("Stone", mainConfig.SettlementStoneCost);
+                            player.SpendResource("Iron", mainConfig.SettlementIronCost);
+                            
+                            break;
+                    }
+                
+                    tile.Structure = structureType;
+                
+                    UpdateTileData(x, y, tile);
+                
+                    if (EnableLogging)
+                    {
+                        Debug.Log($"[{player.PlayerCulture.CultureName}] Built {structureType} at ({x}, {y})");
+                    }
+                
+                    return true;
+                }
+
+                public void DepositToHub(int x, int y, float food, float materials)
+                {
+                    if (x < 0 || x >= Width || y < 0 || y >= Height) return;
+
+                    TileData tile = GetTile(x, y);
+
+                    if (tile.Structure != TileStructureType.LogisticsHub) return;
+
+                    tile.StoredFood = Mathf.Clamp(tile.StoredFood + food, 0f, mainConfig.HubMaxCapacity);
+                    tile.StoredMaterials = Mathf.Clamp(tile.StoredMaterials + materials, 0f, mainConfig.HubMaxCapacity);
+
+                    UpdateTileData(x, y, tile);
+                }
+
+                public void ExtractFromHub(int x, int y, out float extractedFood, out float extractedMaterials)
+                {
+                    extractedFood = 0f;
+                    extractedMaterials = 0f;
+
+                    if (x < 0 || x >= Width || y < 0 || y >= Height) return;
+
+                    TileData tile = GetTile(x, y);
+
+                    if (tile.Structure != TileStructureType.LogisticsHub) return;
+
+                    extractedFood = Mathf.Min(15f, tile.StoredFood);
+                    extractedMaterials = Mathf.Min(10f, tile.StoredMaterials);
+
+                    tile.StoredFood -= extractedFood;
+                    tile.StoredMaterials -= extractedMaterials;
+
+                    UpdateTileData(x, y, tile);
+                }
+
+                public void ProcessRegionalInfluence(float delta)
+                {
+                    if (cultureManager == null) return;
+
+                    influenceAccumulator.Clear();
+
+                    ProcessRoadDecay(delta);
+
+                    var activeCultures = cultureManager.GetActiveCultures();
+
+                    foreach (var culture in activeCultures)
+                    {
+                        AccumulateInfluenceFromTile(culture.CultureCapital.x, culture.CultureCapital.y, culture, true, delta);
+                    }
+
+                    foreach (var pos in structureTiles)
+                    {
+                        TileData tile = GetTile(pos.x, pos.y);
+
+                        if (tile.Structure == TileStructureType.None || tile.Owner == "CUL_NONE") continue;
+
+                        var culture = cultureManager.GetCulture(tile.Owner);
+
+                        if (culture == null || culture.CultureDefeated) continue;
+
+                        bool isCap = culture.CultureCapital.x == pos.x && culture.CultureCapital.y == pos.y;
+
+                        if (!isCap)
+                        {
+                            AccumulateInfluenceFromTile(pos.x, pos.y, culture, false, delta);
+                        }
+                    }
+                    
+                    foreach (var kvp in influenceAccumulator)
+                    {
+                        Vector2Int pos = kvp.Key;
+                        var culturePowers = kvp.Value;
+
+                        string bestCulture = null;
+                        float bestPower = 0f;
+                        float secondBestPower = 0f;
+
+                        foreach (var entry in culturePowers)
+                        {
+                            if (entry.Value > bestPower)
+                            {
+                                secondBestPower = bestPower;
+                                bestPower = entry.Value;
+                                bestCulture = entry.Key;
+                            }
+                            else if (entry.Value > secondBestPower)
+                            {
+                                secondBestPower = entry.Value;
+                            }
+                        }
+
+                        float netPower = bestPower - secondBestPower;
+
+                        if (!string.IsNullOrEmpty(bestCulture) && netPower > 0.05f)
+                        {
+                            TileData targetTile = GetTile(pos.x, pos.y);
+
+                            TileCaptureSystem.ApplyInfluence(targetTile, pos.x, pos.y, bestCulture, netPower, this);
+                        }
+                    }
+                    
+                    float assimilationProb = (mainConfig != null ? mainConfig.CulturalAssimilationChance : 0.08f) * delta;
+
+                    foreach (var culture in activeCultures)
+                    {
+                        TryAssimilateAroundTile(culture.CultureCapital.x, culture.CultureCapital.y, culture.CultureId, 2, assimilationProb);
+                    }
+
+                    foreach (var pos in structureTiles)
+                    {
+                        TileData st = GetTile(pos.x, pos.y);
+                        if (st.Structure == TileStructureType.Settlement && st.Owner != "CUL_NONE")
+                        {
+                            TryAssimilateAroundTile(pos.x, pos.y, st.Owner, 2, assimilationProb);
+                        }
+                    }
+                }
+                
+                public void ProcessRoadDecay(float delta)
+                {
+                    if (roadTiles.Count == 0 || mainConfig == null) return;
+
+                    float decay = mainConfig.DirtPathDecayRatePerSecond * delta;
+                    if (decay <= 0f) return;
+
+                    var snapshot = new List<Vector2Int>(roadTiles);
+
+                    foreach (var pos in snapshot)
+                    {
+                        TileData t = GetTile(pos.x, pos.y);
+                        
+                        if (t.Road == TileRoadType.DirtPath || (t.Road == TileRoadType.None && t.RoadTraffic > 0f))
+                        {
+                            t.RoadTraffic = Mathf.Max(0f, t.RoadTraffic - decay);
+
+                            if (t.Road == TileRoadType.DirtPath && t.RoadTraffic <= 5f)
+                            {
+                                t.Road = TileRoadType.None;
+                                UpdateTileData(pos.x, pos.y, t);
+                            }
+                            else
+                            {
+                                Tiles[pos.y * Width + pos.x] = t;
+                            }
+                        }
+                    }
+                }
+                
+                public void AddRoadTraffic(int x, int y, float amount)
+                {
+                    if (x < 0 || x >= Width || y < 0 || y >= Height || amount <= 0f) return;
+
+                    int i = y * Width + x;
+                    TileData tile = Tiles[i];
+
+                    if (tile.Type == TileType.Water) return;
+                    
+                    if (tile.Road >= TileRoadType.PavedRoad)
+                    {
+                        tile.RoadTraffic = 100f;
+                        Tiles[i] = tile;
+                        return;
+                    }
+
+                    tile.RoadTraffic = Mathf.Clamp(tile.RoadTraffic + amount, 0f, 100f);
+                    roadTiles.Add(new Vector2Int(x, y));
+
+                    if (tile.Road == TileRoadType.None && tile.RoadTraffic >= 100f)
+                    {
+                        tile.Road = TileRoadType.DirtPath;
+                        UpdateTileData(x, y, tile);
+                    }
+                    else
+                    {
+                        Tiles[i] = tile;
+                    }
+                }
+
+                public bool CanAffordRoad(TileRoadType roadType, PlayerData player)
+                {
+                    if (player == null || mainConfig == null) return false;
+
+                    return roadType switch
+                    {
+                        TileRoadType.PavedRoad => player.GetWood() >= mainConfig.PavedRoadWoodCost && player.GetStone() >= mainConfig.PavedRoadStoneCost,
+                        TileRoadType.Railway => player.GetWood() >= mainConfig.RailwayWoodCost && player.GetIron() >= mainConfig.RailwayIronCost,
+                        _ => false
+                    };
+                }
+
+                public bool TryBuildRoad(int x, int y, TileRoadType targetRoad, PlayerData player)
+                {
+                    if (x < 0 || x >= Width || y < 0 || y >= Height) return false;
+                    if (player == null || player.PlayerCulture == null) return false;
+
+                    TileData tile = GetTile(x, y);
+
+                    if (tile.Type == TileType.Water) return false;
+                    if (tile.Owner != player.PlayerCulture.CultureId) return false;
+                    if (tile.Road >= targetRoad) return false;
+
+                    if (!CanAffordRoad(targetRoad, player)) return false;
+
+                    switch (targetRoad)
+                    {
+                        case TileRoadType.PavedRoad:
+                            player.SpendResource("Wood", mainConfig.PavedRoadWoodCost);
+                            player.SpendResource("Stone", mainConfig.PavedRoadStoneCost);
+                            break;
+
+                        case TileRoadType.Railway:
+                            player.SpendResource("Wood", mainConfig.RailwayWoodCost);
+                            player.SpendResource("Iron", mainConfig.RailwayIronCost);
+                            break;
+                    }
+
+                    tile.Road = targetRoad;
+                    tile.RoadTraffic = 100f;
+
+                    UpdateTileData(x, y, tile);
+                    return true;
+                }
+
+                public bool TryBuildCommLine(int x, int y, TileCommLineType targetComm, PlayerData player)
+                {
+                    if (x < 0 || x >= Width || y < 0 || y >= Height) return false;
+                    if (player == null || player.PlayerCulture == null || mainConfig == null) return false;
+
+                    TileData tile = GetTile(x, y);
+
+                    if (tile.Type == TileType.Water) return false;
+                    if (tile.Owner != player.PlayerCulture.CultureId) return false;
+                    if (tile.CommLine >= targetComm) return false;
+
+                    switch (targetComm)
+                    {
+                        case TileCommLineType.Watchtowers:
+                            if (player.GetWood() < mainConfig.WatchtowerWoodCost) return false;
+                            player.SpendResource("Wood", mainConfig.WatchtowerWoodCost);
+                            break;
+
+                        case TileCommLineType.TelegraphLine:
+                            if (player.GetWood() < mainConfig.TelegraphWoodCost || player.GetIron() < mainConfig.TelegraphIronCost) return false;
+                            player.SpendResource("Wood", mainConfig.TelegraphWoodCost);
+                            player.SpendResource("Iron", mainConfig.TelegraphIronCost);
+                            break;
+
+                        case TileCommLineType.TelephoneLine:
+                            if (player.GetIron() < mainConfig.TelephoneIronCost) return false;
+                            player.SpendResource("Iron", mainConfig.TelephoneIronCost);
+                            break;
+                    }
+
+                    tile.CommLine = targetComm;
+                    UpdateTileData(x, y, tile);
+                    return true;
+                }
+
+                private void TryAssimilateAroundTile(int centerX, int centerY, string stateOwnerId, int radius, float probability)
+                {
+                    for (int dy = -radius; dy <= radius; dy++)
+                    {
+                        for (int dx = -radius; dx <= radius; dx++)
+                        {
+                            int nx = centerX + dx;
+                            int ny = centerY + dy;
+                
+                            if (nx < 0 || nx >= Width || ny < 0 || ny >= Height) continue;
+                
+                            TileData t = GetTile(nx, ny);
+                
+                            if (t.Owner == stateOwnerId && t.ResidentCultureId != stateOwnerId && UnityEngine.Random.value < probability)
+                            {
+                                t.ResidentCultureId = stateOwnerId;
+                                UpdateTileData(nx, ny, t);
+                            }
+                        }
+                    }
+                }
+
+                private void AccumulateInfluenceFromTile(int centerX, int centerY, CultureData culture, bool isCapital, float delta)
+                {
+                    TileData sourceTile = GetTile(centerX, centerY);
+
+                    if (sourceTile.Owner != culture.CultureId) return;
+
+                    float multiplier = sourceTile.GetInfluenceMultiplier(isCapital);
+                    float identityFactor = Mathf.Clamp(culture.CultureIdentity / 100f, 0.3f, 1.3f);
+
+                    var gov = CoreManager.GovernmentManager != null ? CoreManager.GovernmentManager.GetGovernment(culture.CultureId) : null;
+                    float govMultiplier = gov != null ? gov.GetInfluenceMultiplier() : 1f;
+
+                    int radius = multiplier >= 2.5f ? 2 : 1;
+                    float baseAssimilatePower = mainConfig.CaptureRatePerSecond * mainConfig.RegionalInfluenceFactor * multiplier * identityFactor * govMultiplier * delta;
+
+                    for (int dy = -radius; dy <= radius; dy++)
+                    {
+                        for (int dx = -radius; dx <= radius; dx++)
+                        {
+                            if (dx == 0 && dy == 0) continue;
+
+                            int nx = centerX + dx;
+                            int ny = centerY + dy;
+
+                            if (nx < 0 || nx >= Width || ny < 0 || ny >= Height) continue;
+
+                            float dist = Mathf.Sqrt(dx * dx + dy * dy);
+
+                            if (dist > radius + 0.2f) continue;
+
+                            TileData targetTile = GetTile(nx, ny);
+
+                            if (targetTile.Type == TileType.Water || targetTile.Owner == culture.CultureId) continue;
+
+                            if (targetTile.Owner != "CUL_NONE")
+                            {
+                                bool atWar = DiplomacyManager.Instance != null && DiplomacyManager.Instance.IsAtWar(culture.CultureId, targetTile.Owner);
+
+                                if (!atWar) continue;
+                            }
+
+                            if (!BordersCultureTerritory(nx, ny, culture.CultureId)) continue;
+
+                            float distanceFalloff = 1f / Mathf.Max(1f, dist);
+                            float targetResistance = targetTile.GetCaptureResistance(false);
+
+                            float influenceDelta = (baseAssimilatePower * distanceFalloff) / targetResistance;
+
+                            Vector2Int targetPos = new Vector2Int(nx, ny);
+
+                            if (!influenceAccumulator.TryGetValue(targetPos, out var dict))
+                            {
+                                dict = new Dictionary<string, float>();
+
+                                influenceAccumulator[targetPos] = dict;
+                            }
+
+                            dict.TryGetValue(culture.CultureId, out float currentVal);
+
+                            dict[culture.CultureId] = currentVal + influenceDelta;
+                        }
+                    }
+                }
+
+                private void ProjectInfluenceFromTile(int centerX, int centerY, CultureData culture, bool isCapital, float delta)
+                {
+                    TileData sourceTile = GetTile(centerX, centerY);
+
+                    if (sourceTile.Owner != culture.CultureId) return;
+
+                    float multiplier = sourceTile.GetInfluenceMultiplier(isCapital);
+                    float identityFactor = Mathf.Clamp(culture.CultureIdentity / 100f, 0.3f, 1.3f);
+
+                    int radius = multiplier >= 2.5f ? 3 : 2;
+
+                    var gov = CoreManager.GovernmentManager != null ? CoreManager.GovernmentManager.GetGovernment(culture.CultureId) : null;
+
+                    float govMultiplier = gov != null ? gov.GetInfluenceMultiplier() : 1f;
+                    float baseAssimilatePower = mainConfig.CaptureRatePerSecond * 0.35f * multiplier * identityFactor * govMultiplier * delta;
+
+                    for (int dy = -radius; dy <= radius; dy++)
+                    {
+                        for (int dx = -radius; dx <= radius; dx++)
+                        {
+                            if (dx == 0 && dy == 0) continue;
+
+                            int nx = centerX + dx;
+                            int ny = centerY + dy;
+
+                            if (nx < 0 || nx >= Width || ny < 0 || ny >= Height) continue;
+
+                            float dist = Mathf.Sqrt(dx * dx + dy * dy);
+
+                            if (dist > radius + 0.2f) continue;
+
+                            TileData targetTile = GetTile(nx, ny);
+
+                            if (targetTile.Type == TileType.Water || targetTile.Owner == culture.CultureId) continue;
+
+                            if (targetTile.Owner != "CUL_NONE")
+                            {
+                                bool atWar = DiplomacyManager.Instance != null && DiplomacyManager.Instance.IsAtWar(culture.CultureId, targetTile.Owner);
+
+                                if (!atWar) continue;
+                            }
+
+                            if (!BordersCultureTerritory(nx, ny, culture.CultureId)) continue;
+
+                            float distanceFalloff = 1f / Mathf.Max(1f, dist);
+                            float targetResistance = targetTile.GetCaptureResistance(false);
+
+                            float influenceDelta = (baseAssimilatePower * distanceFalloff) / targetResistance;
+
+                            TileCaptureSystem.ApplyInfluence(targetTile, nx, ny, culture.CultureId, influenceDelta, this);
+                        }
+                    }
+                }
+
+                public bool BordersCultureTerritory(int x, int y, string cultureId)
+                {
+                    int[] dx = { -1, 1, 0, 0 };
+                    int[] dy = { 0, 0, -1, 1 };
+
+                    for (int i = 0; i < 4; i++)
+                    {
+                        int nx = x + dx[i];
+                        int ny = y + dy[i];
+
+                        if (nx < 0 || nx >= Width || ny < 0 || ny >= Height) continue;
+
+                        if (GetTile(nx, ny).Owner == cultureId) return true;
+                    }
+
+                    return false;
+                }
+
+                public Vector2Int? FindNewCultureCapital(string cultureId)
+                {
+                    if (string.IsNullOrEmpty(cultureId) || cultureId == "CUL_NONE") return null;
+
+                    Vector2Int? bestCandidate = null;
+                    float bestScore = -999f;
 
                     for (int y = 0; y < Height; y++)
                     {
                         for (int x = 0; x < Width; x++)
                         {
                             int i = y * Width + x;
+                            TileData tile = Tiles[i];
+
+                            if (tile.Owner != cultureId || tile.Type == TileType.Water) continue;
+
+                            Vector2Int currentPos = new Vector2Int(x, y);
+                            float candidateScore = 0f;
                             
-                            Tiles[i] = new TileData
+                            if (tile.Structure == TileStructureType.Settlement) candidateScore += 50f;
+                            else if (tile.Structure == TileStructureType.Outpost) candidateScore += 15f;
+                            else if (tile.Structure == TileStructureType.LogisticsHub) candidateScore += 10f;
+
+                            if (tile.Type == TileType.Grass) candidateScore += 10f;
+                            else if (tile.Type == TileType.Rock) candidateScore += 5f;
+
+                            candidateScore += Mathf.Min(tile.Elevation, 5f);
+
+                            var neighbors = GetNeighboringTiles(x, y);
+
+                            foreach (var neighbor in neighbors)
                             {
-                                Type = TileType.Grass,
-
-                                Elevation = UnityEngine.Random.Range(0f, 10f),
-
-                                Variation = UnityEngine.Random.Range(0, 15),
-
-                                Owner = "CUL_NONE",
-                            };
-                        }
-                    }
-                }
-
-                private void GenerateCultureCapitals()
-                {
-                    foreach (var culture in cultureManager.GetActiveCultures())
-                    {
-                        int _x = 0;
-                        int _y = 0;
-
-                        float bestScore = 0f;
-
-                        for (int y = 0; y < Height; y++)
-                        {
-                            for (int x = 0; x < Width; x++)
-                            {
-                                int i = y * Width + x;
-
-                                if (Tiles[i].Owner != "CUL_NONE") continue;
-
-                                float captialScore = 0f;
-
-                                captialScore += Tiles[i].Elevation;
-
-                                if (Tiles[i].Type == TileType.Grass) captialScore += 1;
-
-                                if (bestScore < captialScore)
+                                if (neighbor.Owner == cultureId)
                                 {
-                                    bestScore = captialScore;
-
-                                    _x = x;
-                                    _y = y;
+                                    candidateScore += 1.5f;
                                 }
                             }
-                        }
 
-                        if (_x >= 0 && _y >= 0)
-                        {
-                            SetTileOwner(_x, _y, culture.CultureId);
-
-                            culture.SetCultureCapital(new Vector2Int(_x, _y));
+                            if (candidateScore > bestScore)
+                            {
+                                bestScore = candidateScore;
+                                bestCandidate = currentPos;
+                            }
                         }
                     }
+
+                    return bestCandidate;
                 }
+
+                public IReadOnlyCollection<Vector2Int> GetActiveCaptureTiles() => activeCaptureTiles;
+                public IReadOnlyCollection<Vector2Int> GetStructureTiles() => structureTiles;
 
                 public TileData WorldToTile(Vector2 worldPos)
                 {
@@ -198,17 +754,14 @@ namespace ER
 
                 public List<TileData> GetNeighboringTiles(int x, int y)
                 {
-                    int size = WorldCreationData.WorldSize;
-
                     var tiles = new List<TileData>(4);
 
-                    foreach (var (dx, dy) in new[] {(-1, 0), (1, 0), (0, -1), (0, 1)})
+                    foreach (var (dx, dy) in new[] { (-1, 0), (1, 0), (0, -1), (0, 1) })
                     {
                         int nx = x + dx;
-
                         int ny = y + dy;
 
-                        if (nx >= 0 && nx < size && ny >= 0 && ny < size) tiles.Add(GetTile(nx, ny));
+                        if (nx >= 0 && nx < Width && ny >= 0 && ny < Height) tiles.Add(GetTile(nx, ny));
                     }
 
                     return tiles;
@@ -216,9 +769,8 @@ namespace ER
 
                 public void NotifyTileChanged(int x, int y)
                 {
+                    tileVisualManager.MarkTileDirty(x, y);
                     OnTileChanged?.Invoke(x, y);
-                        
-                    tileVisualManager.RenderDirtyTiles();
                 }
 
                 public void SetTileType(int x, int y, TileType newType)
@@ -226,11 +778,8 @@ namespace ER
                     if (x < 0 || x >= Width || y < 0 || y >= Height) return;
 
                     int i = y * Width + x;
-
                     TileData tile = Tiles[i];
-
                     tile.Type = newType;
-
                     Tiles[i] = tile;
 
                     NotifyTileChanged(x, y);
@@ -241,11 +790,8 @@ namespace ER
                     if (x < 0 || x >= Width || y < 0 || y >= Height) return;
 
                     int i = y * Width + x;
-
                     TileData tile = Tiles[i];
-
                     tile.Elevation = newElevation;
-
                     Tiles[i] = tile;
 
                     NotifyTileChanged(x, y);
@@ -256,11 +802,8 @@ namespace ER
                     if (x < 0 || x >= Width || y < 0 || y >= Height) return;
 
                     int i = y * Width + x;
-
                     TileData tile = Tiles[i];
-
                     tile.Variation = newVariation;
-
                     Tiles[i] = tile;
 
                     NotifyTileChanged(x, y);
@@ -269,23 +812,25 @@ namespace ER
                 public void SetTileOwner(int x, int y, string newOwner)
                 {
                     if (x < 0 || x >= Width || y < 0 || y >= Height) return;
-                    
                     if (newOwner != "CUL_NONE" && cultureManager.GetCulture(newOwner) == null) return;
 
                     int i = y * Width + x;
-
                     TileData tile = Tiles[i];
-
                     string oldOwner = tile.Owner;
-                    
-                    if (oldOwner == newOwner) return;
-                    
-                    UpdateOwnerCount(oldOwner, -1);
 
+                    if (oldOwner == newOwner) return;
+
+                    UpdateOwnerCount(oldOwner, -1);
                     UpdateOwnerCount(newOwner, +1);
 
-                    tile.Owner = newOwner;
+                    if (string.IsNullOrEmpty(tile.ResidentCultureId) || tile.ResidentCultureId == "CUL_NONE")
+                    {
+                        UpdateCultureCount(tile.ResidentCultureId, -1);
+                        UpdateCultureCount(newOwner, +1);
+                        tile.ResidentCultureId = newOwner;
+                    }
 
+                    tile.Owner = newOwner;
                     Tiles[i] = tile;
 
                     NotifyTileChanged(x, y);
@@ -293,7 +838,7 @@ namespace ER
 
                 private void UpdateOwnerCount(string ownerId, int delta)
                 {
-                    if (string.IsNullOrEmpty(ownerId)) return;
+                    if (string.IsNullOrEmpty(ownerId) || ownerId == "CUL_NONE") return;
 
                     if (!tilesByOwner.TryGetValue(ownerId, out int count))
                     {
@@ -312,19 +857,54 @@ namespace ER
                     }
                 }
 
+                public IReadOnlyCollection<Vector2Int> GetRoadTiles() => roadTiles;
+
                 public void UpdateTileData(int x, int y, TileData newData)
                 {
                     if (x < 0 || x >= Width || y < 0 || y >= Height) return;
 
                     int i = y * Width + x;
-
                     TileData oldTile = Tiles[i];
-                    
+
                     if (oldTile.Owner != newData.Owner)
                     {
                         UpdateOwnerCount(oldTile.Owner, -1);
-                        
                         UpdateOwnerCount(newData.Owner, +1);
+                    }
+
+                    if (oldTile.ResidentCultureId != newData.ResidentCultureId)
+                    {
+                        UpdateCultureCount(oldTile.ResidentCultureId, -1);
+                        UpdateCultureCount(newData.ResidentCultureId, +1);
+                    }
+
+                    Vector2Int pos = new Vector2Int(x, y);
+
+                    if (newData.Road != TileRoadType.None || newData.CommLine != TileCommLineType.None || newData.RoadTraffic > 0.1f)
+                    {
+                        roadTiles.Add(pos);
+                    }
+                    else
+                    {
+                        roadTiles.Remove(pos);
+                    }
+
+                    if (!string.IsNullOrEmpty(newData.CapturingCultureId) && newData.CaptureProgress > 0f)
+                    {
+                        activeCaptureTiles.Add(pos);
+                    }
+                    else
+                    {
+                        activeCaptureTiles.Remove(pos);
+                    }
+
+                    if (newData.Structure != TileStructureType.None)
+                    {
+                        structureTiles.Add(pos);
+                    }
+                    else
+                    {
+                        structureTiles.Remove(pos);
                     }
 
                     Tiles[i] = newData;
@@ -337,11 +917,9 @@ namespace ER
                     if (x < 0 || x >= Width || y < 0 || y >= Height) return Color.clear;
 
                     var tile = GetTile(x, y);
-
                     if (tile.Owner == "CUL_NONE") return Color.clear;
 
                     var culture = cultureManager.GetCulture(tile.Owner);
-
                     if (culture == null) return Color.clear;
 
                     return culture.CultureColor;
@@ -350,7 +928,6 @@ namespace ER
                 public float GetTileCaptureProgress(int x, int y)
                 {
                     if (x < 0 || x >= Width || y < 0 || y >= Height) return 0f;
-                
                     return GetTile(x, y).CaptureProgress;
                 }
 
@@ -359,23 +936,37 @@ namespace ER
                     if (x < 0 || x >= Width || y < 0 || y >= Height) return Color.clear;
 
                     var tile = GetTile(x, y);
-
                     if (string.IsNullOrEmpty(tile.CapturingCultureId)) return Color.clear;
 
                     var culture = cultureManager.GetCulture(tile.CapturingCultureId);
-                    
                     if (culture == null) return Color.clear;
 
                     return culture.CultureColor;
                 }
 
-                public int GetTileCountForOwner(string ownerId)
+                public int GetTileCountForOwner(string cultureId)
                 {
-                    if (string.IsNullOrEmpty(ownerId)) return 0;
-
-                    tilesByOwner.TryGetValue(ownerId, out int count);
-
+                    if (string.IsNullOrEmpty(cultureId)) return 0;
+                    tilesByOwner.TryGetValue(cultureId, out int count);
                     return count;
+                }
+
+                public int GetTileCountForCulture(string cultureId)
+                {
+                    if (string.IsNullOrEmpty(cultureId)) return 0;
+                    tilesByCulture.TryGetValue(cultureId, out int count);
+                    return count;
+                }
+
+                private void UpdateCultureCount(string cultureId, int delta)
+                {
+                    if (string.IsNullOrEmpty(cultureId) || cultureId == "CUL_NONE") return;
+
+                    tilesByCulture.TryGetValue(cultureId, out int count);
+                    count += delta;
+
+                    if (count <= 0) tilesByCulture.Remove(cultureId);
+                    else tilesByCulture[cultureId] = count;
                 }
             }
         }

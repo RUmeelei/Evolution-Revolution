@@ -10,31 +10,36 @@ namespace ER
         using Core;
         using Configs;
         using Simulation;
-        // using Government;
         using Culture;
         using Resources;
+        using World.Tiles;
+        using Unit;
 
         public class PlayerManager : MonoBehaviour
         {
-            public static PlayerManager Instance {get; private set;}
+            public static PlayerManager Instance { get; private set; }
 
             [Header("Main")]
             public bool EnableLogging;
 
             public List<PlayerData> Players = new List<PlayerData>();
-            private Dictionary<string, PlayerData> PlayersDictionary = new Dictionary<string, PlayerData>();
 
+            private Dictionary<string, PlayerData> PlayersDictionary = new Dictionary<string, PlayerData>();
             private Dictionary<string, PlayerData> PlayersByCulture = new Dictionary<string, PlayerData>();
 
             private SimulationManager simulationManager;
             private DateManager dateManager;
             private ResourceManager resourceManager;
             private CultureManager cultureManager;
+            private TileManager tileManager;
+            private UnitManager unitManager;
 
             private MainConfig mainConfig;
             private SimulationConfig simulationConfig;
 
             public event Action<float> OnPlayerTick;
+
+            public PlayerData NonAIPlayer;
 
             void Awake()
             {
@@ -67,18 +72,20 @@ namespace ER
 
                 cultureManager = CoreManager.CultureManager;
 
+                tileManager = CoreManager.TileManager;
+
+                unitManager = CoreManager.UnitManager;
+
                 switch (mainConfig.GatherSeason)
                 {
                     case 0:
                         dateManager.OnStep += GatherSeason;
 
                         break;
-
                     case 1:
                         dateManager.OnCycle += GatherSeason;
 
                         break;
-
                     default:
                         dateManager.OnTier += GatherSeason;
 
@@ -92,7 +99,7 @@ namespace ER
 
             void OnDestroy()
             {
-                if (dateManager != null)
+                if (dateManager != null && mainConfig != null)
                 {
                     switch (mainConfig.GatherSeason)
                     {
@@ -100,15 +107,13 @@ namespace ER
                             dateManager.OnStep -= GatherSeason;
 
                             break;
-
                         case 1:
                             dateManager.OnCycle -= GatherSeason;
 
                             break;
-
                         default:
                             dateManager.OnTier -= GatherSeason;
-                            
+
                             break;
                     }
                 }
@@ -118,7 +123,6 @@ namespace ER
 
             public void Initialize()
             {
-                
             }
 
             public PlayerData CreatePlayer(string playerId, string playerName, bool isAI = false)
@@ -127,9 +131,7 @@ namespace ER
                 {
                     PlayerId = playerId,
                     PlayerName = playerName,
-
                     PlayerDefeated = false,
-
                     PlayerAI = isAI,
                 };
 
@@ -138,6 +140,8 @@ namespace ER
                 PlayersDictionary[player.PlayerId] = player;
 
                 Debug.Log($"Created {player.PlayerName} player with id {player.PlayerId}");
+
+                if (!player.PlayerAI) NonAIPlayer = player;
 
                 return player;
             }
@@ -149,7 +153,7 @@ namespace ER
                 if (!cultureManager.GetAllCultures().TryGetValue(cultureId, out var culture))
                 {
                     Debug.Log($"Failed to attach culture for {player.PlayerName}");
-                    
+
                     return;
                 }
 
@@ -170,7 +174,7 @@ namespace ER
             public PlayerData GetPlayerForCulture(string cultureId)
             {
                 PlayersByCulture.TryGetValue(cultureId, out var player);
-                
+
                 return player;
             }
 
@@ -180,28 +184,79 @@ namespace ER
 
             private void GatherSeason(float delta)
             {
-                float multiplier = mainConfig.GatherSeason switch
-                {
-                    0 => 1f,
-                    1 => simulationConfig.StepsPerCycle,
-                    _ => simulationConfig.CyclesPerTier,
-                };
+                if (tileManager == null) tileManager = CoreManager.TileManager;
+                if (unitManager == null) unitManager = CoreManager.UnitManager;
 
                 foreach (var player in Players)
                 {
-                    if (player.PlayerCulture.CultureDefeated) continue;
+                    if (player.PlayerDefeated || player.PlayerCulture == null || player.PlayerCulture.CultureDefeated) continue;
 
-                    float gatheredFood = UnityEngine.Random.Range(0f, 30f) * multiplier;
+                    string cultureId = player.PlayerCulture.CultureId;
+                    int ownedTiles = tileManager != null ? Mathf.Max(1, tileManager.GetTileCountForOwner(cultureId)) : 1;
+                    int population = unitManager != null ? unitManager.GetUnitsByCulture(cultureId).Count : 1;
+                    
+                    int workedTiles = Mathf.Min(ownedTiles, population * 3);
+                    int unworkedTiles = Mathf.Max(0, ownedTiles - workedTiles);
 
-                    float identityPenalty = player.PlayerCulture.CultureIdentity <= mainConfig.WarningIdentityThreshold ? 50f / player.PlayerCulture.CultureIdentity : 0;
+                    float baseFoodYield = (workedTiles * 2.8f) + (unworkedTiles * 0.25f) + (population * 1.0f);
+                    float identityFactor = Mathf.Clamp(player.PlayerCulture.CultureIdentity / 100f, 0.25f, 1.25f);
 
-                    gatheredFood -= identityPenalty;
+                    float gatheredFood = (5f + ownedTiles * 0.4f) * identityFactor;
+                    float gatheredMaterials = (1f + ownedTiles * 0.15f) * identityFactor;
 
-                    gatheredFood = Mathf.Max(0, gatheredFood);
+                    player.GatherResource("Fruits", gatheredFood);
+                    player.GatherResource("Materials", gatheredMaterials);
+                    
+                    int maxSupportedPop = Mathf.Clamp(5 + Mathf.RoundToInt(Mathf.Sqrt(ownedTiles) * 2.2f), 6, 10000);
+                    
+                    float requiredFoodToGrow = mainConfig.BaseFoodRequiredToGrow + (population * mainConfig.FoodRequiredPerPop);
+                    float foodCostToSpawn = mainConfig.BaseFoodCostToSpawn + (population * mainConfig.FoodCostPerPop);
 
-                    player.GatherResource("Fruits", gatheredFood * delta);
+                    if (unitManager != null && player.GetFood() >= requiredFoodToGrow && population < maxSupportedPop)
+                    {
+                        player.SpendResource("Fruits", foodCostToSpawn);
 
-                    // Debug.Log($"Gathered {gatheredFood * delta} food for {player.PlayerName}");
+                        Vector2Int spawnTilePos = player.PlayerCulture.CultureCapital;
+
+                        foreach (var pos in tileManager.GetStructureTiles())
+                        {
+                            TileData st = tileManager.GetTile(pos.x, pos.y);
+
+                            if (st.Owner == cultureId && st.Structure == TileStructureType.Settlement && UnityEngine.Random.value < 0.5f)
+                            {
+                                spawnTilePos = pos;
+
+                                break;
+                            }
+                        }
+
+                        Vector2 centerPos = tileManager.GetTileCenter(spawnTilePos.x, spawnTilePos.y);
+                        
+                        Vector2 spawnPos = centerPos + new Vector2(UnityEngine.Random.Range(-1.5f, 1.5f), UnityEngine.Random.Range(-1.5f, 1.5f));
+
+                        PopulationGroup newGroup = (population % 3 == 0) ? PopulationGroup.Military : PopulationGroup.Producers;
+
+                        TileData spawnTile = tileManager.GetTile((int)spawnPos.x, (int)spawnPos.y);
+
+                        bool canSpawn = spawnTile.Owner == player.PlayerCulture.CultureId && spawnTile.CaptureProgress <= 0;
+
+                        if (canSpawn)
+                        {
+                            unitManager.CreateHuman(
+                                $"Citizen {population + 1}",
+                                $"{player.PlayerCulture.CultureName}",
+                                18,
+                                spawnPos,
+                                cultureId,
+                                newGroup
+                            );
+                        }
+
+                        if (EnableLogging)
+                        {
+                            Debug.Log($"[{player.PlayerCulture.CultureName}] New citizen born! Pop: {population + 1}/{maxSupportedPop}");
+                        }
+                    }
                 }
             }
 
@@ -209,18 +264,22 @@ namespace ER
             {
                 OnPlayerTick?.Invoke(delta);
 
+                if (unitManager == null) unitManager = CoreManager.UnitManager;
+
                 foreach (var player in Players)
                 {
-                    if (player.PlayerCulture.CultureDefeated)
+                    if (player.PlayerCulture == null || player.PlayerCulture.CultureDefeated)
                     {
                         DefeatPlayer(player.PlayerId);
 
                         continue;
                     }
+                    
+                    int population = unitManager != null ? unitManager.GetUnitsByCulture(player.PlayerCulture.CultureId).Count : 0;
 
-                    float spentFood = UnityEngine.Random.Range(5f, 15f);
+                    float foodUpkeepPerSecond = population * mainConfig.FoodUpkeepPerUnit;
 
-                    player.SpendResource("Fruits", 15f * delta);
+                    player.SpendResource("Fruits", foodUpkeepPerSecond * delta);
                 }
             }
 

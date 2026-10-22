@@ -13,7 +13,54 @@ MonoBehaviour:
   m_Name: MainConfig
   m_EditorClassIdentifier: Assembly-CSharp::ER.Configs.MainConfig
   GatherSeason: 0
+  StartPopulation: 5
+  StartFood: 100
+  StartWood: 40
+  StartStone: 30
+  StartIron: 20
+  StartMoney: 0
+  UnitMaxCarryCapacity: 5
+  HarvestFoodAmount: 8
+  HarvestWoodAmount: 6
+  HarvestStoneAmount: 5
+  HarvestIronAmount: 4
+  FoodUpkeepPerUnit: 1
+  BaseFoodRequiredToGrow: 100
+  FoodRequiredPerPop: 20
+  BaseFoodCostToSpawn: 45
+  FoodCostPerPop: 12
+  OutpostWoodCost: 15
+  OutpostStoneCost: 10
+  HubWoodCost: 20
+  HubStoneCost: 0
+  HubMaxCapacity: 40
+  SettlementWoodCost: 25
+  SettlementStoneCost: 20
+  SettlementIronCost: 10
   TileSize: 1
+  WorldNoiseScale: 0.08
+  WaterElevationThreshold: 2.5
+  SandElevationThreshold: 3.2
+  RockElevationThreshold: 6.1
+  ContinentFalloffStrength: 0.35
+  ContinentalPlatesCount: 3
+  OceanicPlatesCount: 6
+  MountainRidgeStrength: 2.2
+  MajorRiversCount: 8
+  CulturalAssimilationChance: 0.08
+  RoadTrampleRatePerSecond: 12
+  DirtPathDecayRatePerSecond: 0.8
+  DirtPathSpeedMultiplier: 1.2
+  PavedRoadSpeedMultiplier: 1.45
+  RailwaySpeedMultiplier: 2
+  PavedRoadWoodCost: 4
+  PavedRoadStoneCost: 8
+  RailwayWoodCost: 8
+  RailwayIronCost: 12
+  WatchtowerWoodCost: 6
+  TelegraphWoodCost: 4
+  TelegraphIronCost: 6
+  TelephoneIronCost: 10
   CultureNamePrefixes:
   - Ross
   - Nord
@@ -23,13 +70,29 @@ MonoBehaviour:
   - Byzant
   - Russ
   - Rome
-  - Angl
   - Chin
+  - Angl
   - Jap
   - Viet
   - Batu
   - Afric
-  - Americ
+  - Vel
+  - Nost
+  - Fresk
+  - Enz
+  - Takin
+  - Gallit
+  - Pol
+  - Ger
+  - Dut
+  - Belg
+  - Fren
+  - Swit
+  - Aust
+  - Hungar
+  - Cze
+  - Ukr
+  - Bel
   CultureNameSuffixes:
   - s
   - ian
@@ -48,21 +111,34 @@ MonoBehaviour:
   - ansk
   - ic
   - ish
+  - ov
+  - ovan
+  - ch
   CameraSmoothing: 1
   CameraKeyboardScrollSpeed: 5
-  CameraZoomSpeed: 1000
-  CameraMinHeight: 1
+  CameraZoomSpeed: 500
+  CameraMinHeight: 0.2
   CameraMaxHeight: 500
   WarningIdentityThreshold: 50
   ErrorIdentityThreshold: 10
   MinStartTraits: 1
   MaxStartTraits: 2
+  UnitBaseMaxSpeed: 0.8
   UnitSmoothSpeed: 10
   UnitAccelerationRate: 0.25
   UnitDecelerationRate: 1
-  UnitVisualInitialSize: 5000
+  UnitVisualInitialSize: 200
+  UnitMobilizationCost: 1
+  UnitVisualScale: 0.22
+  UnitSeparationRadius: 0.02
   SelectionDragThreshold: 10
   CaptureRatePerSecond: 10
   CaptureDecayRatePerSecond: 5
+  RegionalInfluenceFactor: 0.12
   CheckInterval: 1
   SpectatorMode: 0
+  WarStalemateTimeout: 35
+  BasePeaceRecoverySeconds: 20
+  PeaceRecoveryPerTileLost: 8
+  WarExhaustionFoodThreshold: 25
+  WarExhaustionIdentityThreshold: 30

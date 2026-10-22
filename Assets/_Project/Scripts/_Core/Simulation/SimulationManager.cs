@@ -94,9 +94,11 @@ namespace ER
 
                 if (SlowTickTimer >= simulationConfig.SlowTickInterval)
                 {
-                    OnSlowTick?.Invoke(delta);
+                    float slowDelta = SlowTickTimer;
 
-                    SlowTickTimer = 0f;
+                    SlowTickTimer -= simulationConfig.SlowTickInterval;
+
+                    OnSlowTick?.Invoke(slowDelta);
                 }
             }
 
@@ -106,9 +108,11 @@ namespace ER
 
                 if (EpicTickTimer >= simulationConfig.EpicTickInterval)
                 {
-                    OnEpicTick?.Invoke(delta);
+                    float epicDelta = EpicTickTimer;
+                    
+                    EpicTickTimer -= simulationConfig.EpicTickInterval;
 
-                    EpicTickTimer = 0f;
+                    OnEpicTick?.Invoke(epicDelta);
                 }
             }
 

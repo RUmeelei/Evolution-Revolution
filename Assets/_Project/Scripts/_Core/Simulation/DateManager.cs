@@ -10,7 +10,7 @@ namespace ER
 
         public class DateManager : MonoBehaviour
         {
-            public static DateManager Instance {get; private set;}
+            public static DateManager Instance { get; private set; }
 
             [Header("Main")]
             public int Step = 0;
@@ -25,6 +25,7 @@ namespace ER
             public event Action<float> OnTier;
 
             private float stepAccumulator = 0f;
+            private bool isInitialized = false;
 
             void Awake()
             {
@@ -47,60 +48,72 @@ namespace ER
 
             void Start()
             {
-                simulationConfig = CoreManager.SimulationConfig;
+                if (!isInitialized) Initialize();
+            }
 
+            public void Initialize()
+            {
+                if (isInitialized) return;
+                isInitialized = true;
+
+                simulationConfig = CoreManager.SimulationConfig;
                 simulationManager = CoreManager.SimulationManager;
 
                 if (simulationManager != null)
                 {
+                    simulationManager.OnTick -= OnTickHandler;
+                    simulationManager.OnSlowTick -= OnSlowTickHandler;
+                    simulationManager.OnEpicTick -= OnEpicTickHandler;
+
                     simulationManager.OnTick += OnTickHandler;
                     simulationManager.OnSlowTick += OnSlowTickHandler;
                     simulationManager.OnEpicTick += OnEpicTickHandler;
                 }
             }
-            
+
+            void OnDestroy()
+            {
+                if (simulationManager != null)
+                {
+                    simulationManager.OnTick -= OnTickHandler;
+                    simulationManager.OnSlowTick -= OnSlowTickHandler;
+                    simulationManager.OnEpicTick -= OnEpicTickHandler;
+                }
+            }
+
             private void OnTickHandler(float delta)
             {
-                if (simulationConfig.DateScaler == 0)
+                if (simulationConfig != null && simulationConfig.DateScaler == 0)
                 {
-                    stepAccumulator += simulationConfig.BaseAccumulation * delta;
-
-                    while (stepAccumulator >= 1f)
-                    {
-                        MakeStep(delta);
-
-                        stepAccumulator -= 1f;
-                    }
+                    AccumulateSteps(delta);
                 }
             }
-            
+
             private void OnSlowTickHandler(float delta)
             {
-                if (simulationConfig.DateScaler == 1)
+                if (simulationConfig != null && simulationConfig.DateScaler == 1)
                 {
-                    stepAccumulator += simulationConfig.BaseAccumulation * delta;
-
-                    while (stepAccumulator >= 1f)
-                    {
-                        MakeStep(delta);
-
-                        stepAccumulator -= 1f;
-                    }
+                    AccumulateSteps(delta);
                 }
             }
-            
+
             private void OnEpicTickHandler(float delta)
             {
-                if (simulationConfig.DateScaler == 2)
+                if (simulationConfig != null && simulationConfig.DateScaler == 2)
                 {
-                    stepAccumulator += simulationConfig.BaseAccumulation * delta;
+                    AccumulateSteps(delta);
+                }
+            }
 
-                    while (stepAccumulator >= 1f)
-                    {
-                        MakeStep(delta);
+            private void AccumulateSteps(float delta)
+            {
+                stepAccumulator += simulationConfig.BaseAccumulation * delta;
 
-                        stepAccumulator -= 1f;
-                    }
+                while (stepAccumulator >= 1f)
+                {
+                    MakeStep(delta);
+                    
+                    stepAccumulator -= 1f;
                 }
             }
 
@@ -109,7 +122,7 @@ namespace ER
                 OnStep?.Invoke(delta);
 
                 Step++;
-                
+
                 if (Step > simulationConfig.StepsPerCycle)
                 {
                     OnCycle?.Invoke(delta);
