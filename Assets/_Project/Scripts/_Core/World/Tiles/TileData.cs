@@ -22,10 +22,25 @@ namespace ER
                 public float Elevation;
 
                 public int Variation;
-
-                public string Owner;
-
+                
+                public string DeFactoOwner;
+                
+                public string DeJureOwner;
+                
                 public string ResidentCultureId;
+                
+                public float LocalDevastation;
+                
+                public string Owner
+                {
+                    get => DeFactoOwner;
+                    set => DeFactoOwner = value;
+                }
+
+                public bool IsOccupied =>
+                    !string.IsNullOrEmpty(DeFactoOwner) && DeFactoOwner != "CUL_NONE" &&
+                    !string.IsNullOrEmpty(DeJureOwner) && DeJureOwner != "CUL_NONE" &&
+                    DeFactoOwner != DeJureOwner;
                 
                 public float CaptureProgress;
                 
@@ -48,7 +63,7 @@ namespace ER
                         TileStructureType.LogisticsHub => 1.25f,
                         _ => 1.0f
                     };
-                    
+
                     float infraMult = Road switch
                     {
                         TileRoadType.DirtPath => 1.05f,
@@ -77,7 +92,7 @@ namespace ER
                         _ => res
                     };
                 }
-                
+
                 public float GetMovementSpeedMultiplier(float waterSpeed = 0.33f, float rockSpeed = 0.67f, float sandSpeed = 0.85f, float dirtBonus = 1.20f, float pavedBonus = 1.45f, float railBonus = 2.0f)
                 {
                     if (Type == TileType.Water) return waterSpeed;
@@ -92,13 +107,12 @@ namespace ER
                     return Road switch
                     {
                         TileRoadType.DirtPath => Mathf.Max(terrainFactor * dirtBonus, Mathf.Lerp(terrainFactor, 1.0f, 0.5f) * dirtBonus),
-                        
                         TileRoadType.PavedRoad => pavedBonus,
                         TileRoadType.Railway => railBonus,
                         _ => terrainFactor
                     };
                 }
-                
+
                 public float GetPathfindingCost()
                 {
                     if (Type == TileType.Water) return 5.0f;

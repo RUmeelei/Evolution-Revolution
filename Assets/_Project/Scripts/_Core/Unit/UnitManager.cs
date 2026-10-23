@@ -113,20 +113,19 @@ namespace ER
                 UnitSpatialGrid = new UnitSpatialGrid(worldWidth, worldHeight, mainConfig.TileSize * 4f);
 
                 var cultures = cultureManager.GetActiveCultures();
+                int startPop = mainConfig != null && mainConfig.StartPopulation > 0 ? mainConfig.StartPopulation : 5;
 
                 foreach (var culture in cultures)
                 {
                     Vector2 position = tileManager.GetTileCenter(culture.CultureCapital.x, culture.CultureCapital.y);
 
-                    int startPop = mainConfig != null && mainConfig.StartPopulation > 0 ? mainConfig.StartPopulation : 5;
-
                     for (int i = 0; i < startPop; i++)
                     {
                         Vector2 spawnPos = position + new Vector2(Random.Range(-0.3f, 0.3f), Random.Range(-0.3f, 0.3f));
-                    
+
                         PopulationGroup startGroup = (i < Mathf.CeilToInt(startPop * 0.6f)) ? PopulationGroup.Producers : PopulationGroup.Military;
-                    
-                        CreateHuman($"Citizen {i + 1}", culture.CultureName, 18, spawnPos, culture.CultureId, startGroup);
+
+                        CreateHuman($"Name {culture.CultureName} {i}", $"Last Name {culture.CultureName} {i}", 18, spawnPos, culture.CultureId, startGroup);
                     }
                 }
             }
@@ -155,26 +154,11 @@ namespace ER
 
                 var human = new Human(id, firstName, lastName, age, position, cultureId, group);
 
-                float damage = combatConfig.BaseAttackDamage;
-
-                if (group != PopulationGroup.Military)
-                {
-                    damage *= 0.5f;
-                }
-
                 var culture = cultureManager != null ? cultureManager.GetCulture(cultureId) : null;
                 
-                if (culture != null)
+                if (culture != null && culture.HasTrait("NomadicNation"))
                 {
-                    if (culture.HasTrait("BarbarianNation"))
-                    {
-                        damage *= 1.25f;
-                    }
-
-                    if (culture.HasTrait("NomadicNation"))
-                    {
-                        human.SetSpeed(human.MaxSpeed);
-                    }
+                    human.SetSpeed(human.MaxSpeed);
                 }
 
                 RecalculateHumanCombat(human);
@@ -398,16 +382,13 @@ namespace ER
                     unit.Update(delta);
                     unit.UpdateCombatCooldown(delta);
 
-                    // AI
-
                     if (aiConfig.IsAIEnabled)
                     {
                         UnitAISystem.ProcessUnit(unit, aiConfig, combatConfig, UnitSpatialGrid, cultureManager, playerManager, tileManager, worldWidth, worldHeight);
 
-                        if (playerManager.GetPlayerForCulture(unit.CultureId) != null && playerManager.GetPlayerForCulture(unit.CultureId).PlayerAI && !unit.IsAutonomous) unit.IsAutonomous = true;
+                        var unitPlayer = playerManager.GetPlayerForCulture(unit.CultureId);
+                        if (unitPlayer != null && unitPlayer.PlayerAI && !unit.IsAutonomous) unit.IsAutonomous = true;
                     }
-
-                    // Combat
 
                     if (unit.AttackTarget != null)
                     {
@@ -422,7 +403,19 @@ namespace ER
                             if (distToTarget <= unit.AttackRange)
                             {
                                 unit.Stop();
+                                bool wasAlive = unit.AttackTarget.IsAlive;
                                 UnitCombatSystem.PerformAttack(unit, unit.AttackTarget);
+                                
+                                Vector2Int combatTile = tileManager.GetClosestTilePos(unit.AttackTarget.Position);
+                                tileManager.AddTileDevastation(combatTile.x, combatTile.y, 4f * delta);
+
+                                if (wasAlive && !unit.AttackTarget.IsAlive)
+                                {
+                                    bool killedCivilian = unit.AttackTarget is Human th && th.Group == PopulationGroup.Producers;
+                                    float hostilitySpike = killedCivilian ? 18f : 7f;
+                                    tileManager.AddCulturalHostility(unit.CultureId, unit.AttackTarget.CultureId, hostilitySpike);
+                                    tileManager.AddTileDevastation(combatTile.x, combatTile.y, killedCivilian ? 20f : 8f);
+                                }
                             }
                             else
                             {
@@ -433,8 +426,6 @@ namespace ER
                             }
                         }
                     }
-
-                    // Movement & Separation
 
                     float separationRadius = mainConfig != null && mainConfig.UnitSeparationRadius > 0.02f ? mainConfig.UnitSeparationRadius : 0.09f;
                     var nearbyUnits = UnitSpatialGrid.GetUnitsInRadius(unit.Position, separationRadius);
@@ -496,22 +487,13 @@ namespace ER
                         unit.MoveTowardsTarget(delta);
 
                         UnitSpatialGrid.UpdatePosition(unit, oldPosition);
-                        
+
                         Vector2Int movedTilePos = tileManager.GetClosestTilePos(unit.Position);
                         tileManager.AddRoadTraffic(movedTilePos.x, movedTilePos.y, mainConfig.RoadTrampleRatePerSecond * delta);
                     }
                     else if (unit.Speed > 0)
                     {
                         unit.Speed = Mathf.Max(0, unit.Speed - mainConfig.UnitDecelerationRate * delta);
-                    }
-
-                    Vector2Int tilePos = tileManager.GetClosestTilePos(unit.Position);
-
-                    TileData currentTile = tileManager.GetTile(tilePos.x, tilePos.y);
-
-                    if (currentTile.Type != TileType.Water)
-                    {
-                        TileCaptureSystem.ProcessCapture(currentTile, tilePos.x, tilePos.y, unit, tileManager, mainConfig, delta);
                     }
                 }
 

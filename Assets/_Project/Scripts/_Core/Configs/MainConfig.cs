@@ -24,7 +24,7 @@ namespace ER
             public float HarvestWoodAmount = 6f;
             public float HarvestStoneAmount = 5f;
             public float HarvestIronAmount = 4f;
-            public float FoodUpkeepPerUnit = 1.0f;
+            public float FoodUpkeepPerUnit = 0.25f;
 
             [Header("Population Growth")]
             public float BaseFoodRequiredToGrow = 100f;
@@ -51,33 +51,12 @@ namespace ER
             [Range(0f, 6f)] public float SandElevationThreshold = 3.2f;
             [Range(5f, 10f)] public float RockElevationThreshold = 7.2f;
             [Range(0f, 1f)] public float ContinentFalloffStrength = 0.35f;
-            [Range(2, 8)] public int ContinentalPlatesCount = 3;
+
+            [Range(1, 8)] public int ContinentalPlatesCount = 3;
             [Range(1, 6)] public int OceanicPlatesCount = 3;
             [Range(0f, 4f)] public float MountainRidgeStrength = 2.2f;
             [Range(0, 8)] public int MajorRiversCount = 3;
             [Range(0.01f, 0.5f)] public float CulturalAssimilationChance = 0.08f;
-
-            [Header("Roads & Communication Lines")]
-            [Tooltip("How much traffic progress (0-100) a moving unit adds per second to trample a DirtPath")]
-            public float RoadTrampleRatePerSecond = 12f;
-            
-            [Tooltip("How fast unused DirtPaths decay per second")]
-            public float DirtPathDecayRatePerSecond = 0.8f;
-            
-            public float DirtPathSpeedMultiplier = 1.20f;
-            public float PavedRoadSpeedMultiplier = 1.45f;
-            public float RailwaySpeedMultiplier = 2.00f;
-            
-            public float PavedRoadWoodCost = 4f;
-            public float PavedRoadStoneCost = 8f;
-            
-            public float RailwayWoodCost = 8f;
-            public float RailwayIronCost = 12f;
-            
-            public float WatchtowerWoodCost = 6f;
-            public float TelegraphWoodCost = 4f;
-            public float TelegraphIronCost = 6f;
-            public float TelephoneIronCost = 10f;
 
             public string[] CultureNamePrefixes;
             public string[] CultureNameSuffixes;
@@ -124,6 +103,32 @@ namespace ER
 
             [Tooltip("Multiplier for passive regional assimilation from structures")]
             public float RegionalInfluenceFactor = 0.12f;
+
+            [Header("Roads & Communication Lines")]
+            public float RoadTrampleRatePerSecond = 12f;
+            public float DirtPathDecayRatePerSecond = 0.8f;
+
+            public float DirtPathSpeedMultiplier = 1.20f;
+            public float PavedRoadSpeedMultiplier = 1.45f;
+            public float RailwaySpeedMultiplier = 2.00f;
+
+            public float PavedRoadWoodCost = 4f;
+            public float PavedRoadStoneCost = 8f;
+
+            public float RailwayWoodCost = 8f;
+            public float RailwayIronCost = 12f;
+
+            public float WatchtowerWoodCost = 6f;
+            public float TelegraphWoodCost = 4f;
+            public float TelegraphIronCost = 6f;
+            public float TelephoneIronCost = 10f;
+
+            [Header("Unrest, Devastation & Occupation")]
+            [Tooltip("How fast devastation on a tile heals per second when peaceful")]
+            public float DevastationRecoveryPerSecond = 0.6f;
+
+            [Tooltip("Threshold of combined devastation + blood hostility above which occupied locals strike/protest")]
+            public float RadicalismStrikeThreshold = 35f;
 
             [Header("Game")]
             [Tooltip("How often (in seconds) to check the conditions")]

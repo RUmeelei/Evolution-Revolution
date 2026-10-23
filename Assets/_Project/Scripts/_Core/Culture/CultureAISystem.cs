@@ -51,7 +51,7 @@ namespace ER
                 var cfg = CoreManager.MainConfig;
                 float baseRecovery = cfg != null ? cfg.BasePeaceRecoverySeconds : 20f;
                 float perTileRecovery = cfg != null ? cfg.PeaceRecoveryPerTileLost : 8f;
-                
+
                 float rawDuration = baseRecovery + (totalTilesChangedHands * perTileRecovery);
 
                 float stanceFactor1 = GetAmbitionRevanchismFactor(c1);
@@ -84,7 +84,7 @@ namespace ER
             private static int CalculateAmbitionWarGoal(CultureData culture, int selfTiles, int enemyTiles)
             {
                 if (culture == null) return 3;
-                
+
                 if (culture.Stance == CultureStance.Passive && !culture.HasTrait("BarbarianNation"))
                 {
                     return Mathf.Max(1, enemyTiles / 20);
@@ -94,7 +94,7 @@ namespace ER
                 {
                     return Mathf.Clamp(Mathf.RoundToInt(enemyTiles * 0.12f) + 1, 2, 8);
                 }
-                
+
                 float ambitionRatio = culture.HasTrait("BarbarianNation") ? 0.40f : 0.25f;
                 int goal = Mathf.RoundToInt(enemyTiles * ambitionRatio + selfTiles * 0.08f);
 
@@ -135,7 +135,7 @@ namespace ER
                 if (attacker == null || defender == null) return;
 
                 var war = GetOrCreateWarData(attacker, defender, tileManager);
-                
+
                 war.LastFrontlineChangeTime = Time.time;
 
                 war.CapturedTilesByCulture.TryGetValue(attackerId, out int count);
@@ -219,21 +219,23 @@ namespace ER
 
                 bool myGoalAchieved = myCaptured >= myGoal;
                 bool enemyGoalAchieved = enemyCaptured >= enemyGoal;
-                
+
                 bool isFrontlineStalemate = (Time.time - warData.LastFrontlineChangeTime) >= stalemateTimeout;
                 int totalTilesChangedHands = myCaptured + enemyCaptured;
 
                 if (myGoalAchieved || enemyExhausted)
                 {
                     PayWarReparations(enemyPlayer, player);
-                    ConcludePeaceWithTruce(culture, primaryEnemy, totalTilesChangedHands, tileManager, diplomacy, $"[{culture.CultureName}] achieved war ambition against [{primaryEnemy.CultureName}] (Captured {myCaptured}/{myGoal} tiles)!");
+                    tileManager.AnnexOccupiedTiles(culture.CultureId, primaryEnemy.CultureId);
+                    ConcludePeaceWithTruce(culture, primaryEnemy, totalTilesChangedHands, tileManager, diplomacy, $"[{culture.CultureName}] achieved war ambition and annexed territories from [{primaryEnemy.CultureName}]!");
                     return;
                 }
 
                 if (enemyGoalAchieved || myExhausted)
                 {
                     PayWarReparations(player, enemyPlayer);
-                    ConcludePeaceWithTruce(culture, primaryEnemy, totalTilesChangedHands, tileManager, diplomacy, $"[{culture.CultureName}] capitulated to [{primaryEnemy.CultureName}] and paid tribute.");
+                    tileManager.AnnexOccupiedTiles(primaryEnemy.CultureId, culture.CultureId);
+                    ConcludePeaceWithTruce(culture, primaryEnemy, totalTilesChangedHands, tileManager, diplomacy, $"[{culture.CultureName}] capitulated to [{primaryEnemy.CultureName}] and ceded occupied lands.");
                     return;
                 }
 
@@ -428,6 +430,13 @@ namespace ER
                 if (Random.value > 0.35f) return;
 
                 int ownedTiles = tileManager.GetTileCountForOwner(culture.CultureId);
+                
+                if (player.GetWood() >= 12f && TryFindFrontierWildTileForCamp(culture, tileManager, out Vector2Int frontierPos))
+                {
+                    player.SpendResource("Wood", 8f);
+                    tileManager.TryStartConstructionSite(tileManager.GetTileCenter(frontierPos.x, frontierPos.y), WorldObjectType.Camp, culture.CultureId);
+                    return;
+                }
 
                 if (ownedTiles < 10) return;
 
@@ -469,9 +478,10 @@ namespace ER
                     if (TryFindBuildTileForAI(culture, tileManager, true, out Vector2Int borderPos))
                     {
                         tileManager.TryBuildStructure(borderPos.x, borderPos.y, TileStructureType.Outpost, player);
+                        return;
                     }
                 }
-                
+
                 if (tileManager.CanAffordRoad(TileRoadType.PavedRoad, player))
                 {
                     foreach (var roadPos in tileManager.GetRoadTiles())
@@ -484,6 +494,43 @@ namespace ER
                         }
                     }
                 }
+            }
+
+            private static bool TryFindFrontierWildTileForCamp(CultureData culture, TileManager tileManager, out Vector2Int frontierPos)
+            {
+                frontierPos = Vector2Int.zero;
+
+                var objects = tileManager.GetWorldObjects();
+                for (int i = 0; i < objects.Count; i++)
+                {
+                    if (objects[i].DeFactoOwnerId == culture.CultureId && objects[i].IsUnderConstruction) return false;
+                }
+
+                int capX = culture.CultureCapital.x;
+                int capY = culture.CultureCapital.y;
+                int radius = 12;
+
+                int minX = Mathf.Max(1, capX - radius);
+                int maxX = Mathf.Min(tileManager.WorldWidth - 2, capX + radius);
+                int minY = Mathf.Max(1, capY - radius);
+                int maxY = Mathf.Min(tileManager.WorldHeight - 2, capY + radius);
+
+                for (int attempt = 0; attempt < 20; attempt++)
+                {
+                    int x = Random.Range(minX, maxX + 1);
+                    int y = Random.Range(minY, maxY + 1);
+
+                    TileData t = tileManager.GetTile(x, y);
+                    if (t.Owner != "CUL_NONE" || t.Type == TileType.Water) continue;
+
+                    if (tileManager.BordersCultureTerritory(x, y, culture.CultureId))
+                    {
+                        frontierPos = new Vector2Int(x, y);
+                        return true;
+                    }
+                }
+
+                return false;
             }
 
             private static bool TryFindBuildTileForAI(CultureData culture, TileManager tileManager, bool preferBorder, out Vector2Int chosenPos)

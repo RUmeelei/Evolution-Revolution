@@ -13,6 +13,8 @@ namespace ER
         
         public static class UnitAISystem
         {
+            private static readonly List<Vector2> workTilesBuffer = new List<Vector2>(128);
+
             public static void ProcessUnit(Unit unit, AIConfig aiConfig, CombatConfig combatConfig, UnitSpatialGrid grid, CultureManager cultureManager, PlayerManager playerManager, TileManager tileManager, float worldWidth, float worldHeight)
             {
                 if (unit == null || !unit.IsAlive) return;
@@ -39,7 +41,7 @@ namespace ER
 
                     return;
                 }
-                
+
                 ProcessMilitaryTactics(unit, aiConfig, combatConfig, grid, cultureManager, tileManager, worldWidth, worldHeight);
             }
 
@@ -67,7 +69,7 @@ namespace ER
                         if (other is Human oh && oh.Group == PopulationGroup.Military)
                         {
                             alliesCount++;
-                            
+
                             if (string.CompareOrdinal(other.UnitId, squadLeader.UnitId) < 0)
                             {
                                 squadLeader = other;
@@ -95,14 +97,14 @@ namespace ER
 
                 var doctrine = TacticalDoctrine.GetOrCreateDoctrine(unit.CultureId);
                 var activeRule = doctrine.Evaluate(unit, alliesCount, enemiesCount, nearestEnemyDist);
-                
+
                 if (activeRule.Action == TacticalAction.RetreatToSafety && nearestEnemy != null)
                 {
                     RetreatToStronghold(unit, nearestEnemy, cultureManager, tileManager, worldWidth, worldHeight);
                     unit.AIState = UnitAIState.Fleeing;
                     return;
                 }
-                
+
                 if (nearestEnemy != null && unit.CanAttack)
                 {
                     unit.AttackTarget = nearestEnemy;
@@ -140,8 +142,8 @@ namespace ER
                 unit.ClearAttackTarget();
 
                 if (!unit.IsAutonomous) return;
-                
-                WanderOrMoveToRally(unit, squadLeader, mySlotIndex, alliesCount, activeRule.Formation, aiConfig, cultureManager, tileManager, grid, worldWidth, worldHeight);
+
+                MoveMilitaryToStrategicAnchor(unit, squadLeader, mySlotIndex, alliesCount, activeRule.Formation, aiConfig, cultureManager, tileManager, worldWidth, worldHeight);
             }
 
             private static void RetreatToStronghold(Unit unit, Unit nearestEnemy, CultureManager cultureManager, TileManager tileManager, float worldWidth, float worldHeight)
@@ -197,33 +199,14 @@ namespace ER
                     unit.Stop();
                 }
             }
-
-            private static void WanderOrMoveToRally(Unit unit, Unit squadLeader, int slotIndex, int alliesCount, FormationType marchFormation, AIConfig aiConfig, CultureManager cultureManager, TileManager tileManager, UnitSpatialGrid grid, float worldWidth, float worldHeight)
+            
+            private static void MoveMilitaryToStrategicAnchor(Unit unit, Unit squadLeader, int slotIndex, int alliesCount, FormationType marchFormation, AIConfig aiConfig, CultureManager cultureManager, TileManager tileManager, float worldWidth, float worldHeight)
             {
-                Vector2Int currentTilePos = tileManager.GetClosestTilePos(unit.Position);
-                var currentTile = tileManager.GetTile(currentTilePos.x, currentTilePos.y);
-
-                if (CanUnitCaptureTile(unit, currentTile))
-                {
-                    Vector2 tileCenter = tileManager.GetTileCenter(currentTilePos.x, currentTilePos.y);
-
-                    if (Vector2.Distance(unit.Position, tileCenter) > 0.15f)
-                    {
-                        unit.SetTarget(tileCenter);
-                    }
-                    else
-                    {
-                        unit.Stop();
-                    }
-
-                    return;
-                }
-
                 if (unit.HasTarget && Vector2.Distance(unit.Position, unit.TargetPosition) > 0.25f)
                 {
                     return;
                 }
-
+                
                 if (unit.DecisionTimer > 0) return;
 
                 unit.DecisionTimer = (aiConfig.DecisionInterval > 0 ? aiConfig.DecisionInterval : 2f) + Random.Range(0f, 0.5f);
@@ -232,39 +215,32 @@ namespace ER
                 if (culture == null) return;
 
                 bool atWar = DiplomacyManager.Instance != null && DiplomacyManager.Instance.HasAnyWar(unit.CultureId);
-                
-                Vector2 captureTarget = FindCapturableTile(unit, tileManager, grid, 10);
 
-                if (captureTarget == Vector2.zero)
+                if (atWar)
                 {
-                    captureTarget = FindCapturableTile(unit, tileManager, grid, 24);
-                }
-                
-                if (captureTarget == Vector2.zero && atWar)
-                {
-                    captureTarget = FindEnemyFrontlineAcrossMap(unit, cultureManager, tileManager);
+                    Vector2 enemyAnchorPos = FindNearestEnemyAnchor(unit, tileManager);
+
+                    if (enemyAnchorPos != Vector2.zero)
+                    {
+                        Vector2 marchDir = (enemyAnchorPos - squadLeader.Position).normalized;
+                        Vector2 slotOffset = TacticalDoctrine.GetFormationSlotOffset(slotIndex, alliesCount, marchDir, marchFormation);
+
+                        Vector2 attackDest = enemyAnchorPos + slotOffset;
+                        attackDest.x = Mathf.Clamp(attackDest.x, 0.5f, worldWidth - 0.5f);
+                        attackDest.y = Mathf.Clamp(attackDest.y, 0.5f, worldHeight - 0.5f);
+
+                        unit.SetTarget(attackDest);
+                        unit.AIState = UnitAIState.Wandering;
+                        return;
+                    }
                 }
 
-                if (captureTarget != Vector2.zero)
-                {
-                    Vector2 marchDir = (captureTarget - squadLeader.Position).normalized;
-                    Vector2 slotOffset = TacticalDoctrine.GetFormationSlotOffset(slotIndex, alliesCount, marchDir, marchFormation);
-
-                    Vector2 targetWithFormation = captureTarget + slotOffset * 0.4f;
-                    targetWithFormation.x = Mathf.Clamp(targetWithFormation.x, 0.5f, worldWidth - 0.5f);
-                    targetWithFormation.y = Mathf.Clamp(targetWithFormation.y, 0.5f, worldHeight - 0.5f);
-
-                    unit.SetTarget(targetWithFormation);
-                    unit.AIState = UnitAIState.Wandering;
-                    return;
-                }
-                
                 Vector2 rally = culture.RallyPoint != Vector2.zero
                     ? culture.RallyPoint
                     : tileManager.GetTileCenter(culture.CultureCapital.x, culture.CultureCapital.y);
 
-                float maxWander = aiConfig != null && aiConfig.WanderRadius > 1.5f ? aiConfig.WanderRadius : 4.0f;
-                Vector2 dest = rally + Random.insideUnitCircle * Random.Range(1.0f, maxWander);
+                float maxWander = aiConfig != null && aiConfig.WanderRadius > 1.5f ? aiConfig.WanderRadius : 3.0f;
+                Vector2 dest = rally + Random.insideUnitCircle * Random.Range(0.4f, maxWander);
 
                 dest.x = Mathf.Clamp(dest.x, 0.5f, worldWidth - 0.5f);
                 dest.y = Mathf.Clamp(dest.y, 0.5f, worldHeight - 0.5f);
@@ -278,27 +254,27 @@ namespace ER
                 }
             }
 
-            private static Vector2 FindEnemyFrontlineAcrossMap(Unit unit, CultureManager cultureManager, TileManager tileManager)
+            private static Vector2 FindNearestEnemyAnchor(Unit unit, TileManager tileManager)
             {
                 var diplomacy = DiplomacyManager.Instance;
                 if (diplomacy == null) return Vector2.zero;
 
+                var anchors = tileManager.GetWorldObjects();
                 float bestDist = float.MaxValue;
                 Vector2 bestPos = Vector2.zero;
 
-                foreach (var other in cultureManager.GetActiveCultures())
+                for (int i = 0; i < anchors.Count; i++)
                 {
-                    if (other.CultureId == unit.CultureId) continue;
+                    var a = anchors[i];
+                    if (a.IsUnderConstruction) continue;
 
-                    if (diplomacy.IsAtWar(unit.CultureId, other.CultureId))
+                    if (diplomacy.IsAtWar(unit.CultureId, a.DeFactoOwnerId))
                     {
-                        Vector2 enemyCapPos = tileManager.GetTileCenter(other.CultureCapital.x, other.CultureCapital.y);
-                        float d = Vector2.Distance(unit.Position, enemyCapPos);
-
+                        float d = Vector2.Distance(unit.Position, a.Position);
                         if (d < bestDist)
                         {
                             bestDist = d;
-                            bestPos = enemyCapPos;
+                            bestPos = a.Position;
                         }
                     }
                 }
@@ -317,6 +293,65 @@ namespace ER
                 var inventory = unit.GetInventory();
 
                 if (inventory == null) return;
+
+                Vector2Int currentTilePos = tileManager.GetClosestTilePos(unit.Position);
+                TileData currentTile = tileManager.GetTile(currentTilePos.x, currentTilePos.y);
+                
+                if (!string.IsNullOrEmpty(currentTile.DeFactoOwner) &&
+                    currentTile.DeFactoOwner != "CUL_NONE" &&
+                    currentTile.DeFactoOwner != unit.CultureId)
+                {
+                    var occupierPlayer = playerManager.GetPlayerForCulture(currentTile.DeFactoOwner);
+                    float starvationGrievance = (occupierPlayer != null && occupierPlayer.GetFood() <= 5f) ? 25f : 0f;
+                    float bloodHostility = tileManager.GetCulturalHostility(unit.CultureId, currentTile.DeFactoOwner);
+
+                    float totalRadicalism = currentTile.LocalDevastation + (bloodHostility * 0.7f) + starvationGrievance;
+                    float strikeThreshold = cfg != null ? cfg.RadicalismStrikeThreshold : 35f;
+
+                    if (totalRadicalism >= strikeThreshold)
+                    {
+                        inventory.Clear();
+
+                        if (unit.DecisionTimer <= 0f)
+                        {
+                            unit.DecisionTimer = 2.0f;
+                            Vector2 protestPos = tileManager.GetTileCenter(currentTilePos.x, currentTilePos.y) + Random.insideUnitCircle * 0.25f;
+                            unit.SetTarget(protestPos);
+                        }
+
+                        return;
+                    }
+                }
+                
+                WorldAnchorObject activeSite = FindActiveConstructionSite(unit.CultureId, tileManager);
+                if (activeSite != null)
+                {
+                    float distToSite = Vector2.Distance(unit.Position, activeSite.Position);
+
+                    if (distToSite <= 0.45f)
+                    {
+                        unit.Stop();
+
+                        for (int i = 0; i < inventory.Count; i++)
+                        {
+                            if (inventory[i] == "Wood") activeSite.DeliverMaterial("Wood", cfg != null ? cfg.HarvestWoodAmount : 6f);
+                            else if (inventory[i] == "Stone") activeSite.DeliverMaterial("Stone", cfg != null ? cfg.HarvestStoneAmount : 5f);
+                        }
+                        inventory.Clear();
+
+                        activeSite.AdvanceConstruction(20f);
+                        unit.DecisionTimer = 0.6f;
+                        return;
+                    }
+
+                    bool hasBuildMats = inventory.Contains("Wood") || inventory.Contains("Stone");
+                    if (hasBuildMats || !activeSite.NeedsConstructionMaterials())
+                    {
+                        unit.SetTarget(activeSite.Position);
+                        unit.AIState = UnitAIState.Wandering;
+                        return;
+                    }
+                }
 
                 Vector2 capitalPos = tileManager.GetTileCenter(culture.CultureCapital.x, culture.CultureCapital.y);
                 
@@ -378,10 +413,6 @@ namespace ER
                     return;
                 }
 
-                Vector2Int currentTilePos = tileManager.GetClosestTilePos(unit.Position);
-
-                TileData currentTile = tileManager.GetTile(currentTilePos.x, currentTilePos.y);
-
                 if (currentTile.Owner == unit.CultureId && currentTile.Type != TileType.Water)
                 {
                     string harvestedItem = "Fruits";
@@ -394,8 +425,8 @@ namespace ER
                     {
                         var p = playerManager.GetPlayerForCulture(unit.CultureId);
                         bool needFoodUrgently = p != null && p.GetFood() < 80f;
-                    
-                        harvestedItem = (needFoodUrgently || Random.value < 0.70f) ? "Fruits" : "Wood";
+
+                        harvestedItem = (needFoodUrgently || Random.value < 0.68f) ? "Fruits" : "Wood";
                     }
 
                     unit.AddItem(harvestedItem);
@@ -409,6 +440,20 @@ namespace ER
 
                     unit.AIState = UnitAIState.Wandering;
                 }
+            }
+
+            private static WorldAnchorObject FindActiveConstructionSite(string cultureId, TileManager tileManager)
+            {
+                var objects = tileManager.GetWorldObjects();
+                for (int i = 0; i < objects.Count; i++)
+                {
+                    if (objects[i].DeFactoOwnerId == cultureId && objects[i].IsUnderConstruction)
+                    {
+                        return objects[i];
+                    }
+                }
+
+                return null;
             }
 
             private static Vector2Int FindNearestDropOffTile(Vector2 unitPos, CultureData culture, TileManager tileManager)
@@ -536,9 +581,9 @@ namespace ER
             {
                 Vector2Int centerTile = FindNearestDropOffTile(unit.Position, culture, tileManager);
 
-                int searchRadius = 8;
+                int searchRadius = 6;
 
-                List<Vector2> validWorkTiles = new List<Vector2>();
+                workTilesBuffer.Clear();
 
                 for (int dy = -searchRadius; dy <= searchRadius; dy++)
                 {
@@ -553,100 +598,15 @@ namespace ER
 
                         if (tile.Owner != unit.CultureId || tile.Type == TileType.Water) continue;
 
-                        validWorkTiles.Add(tileManager.GetTileCenter(nx, ny));
+                        workTilesBuffer.Add(tileManager.GetTileCenter(nx, ny));
                     }
                 }
 
-                if (validWorkTiles.Count == 0) return Vector2.zero;
+                if (workTilesBuffer.Count == 0) return Vector2.zero;
 
-                Vector2 chosenTile = validWorkTiles[Random.Range(0, validWorkTiles.Count)];
+                Vector2 chosenTile = workTilesBuffer[Random.Range(0, workTilesBuffer.Count)];
 
                 return chosenTile + Random.insideUnitCircle * 0.3f;
-            }
-
-            private static bool CanUnitCaptureTile(Unit unit, TileData tile)
-            {
-                if (tile.Type == TileType.Water) return false;
-
-                if (tile.Owner == unit.CultureId) return false;
-
-                if (string.IsNullOrEmpty(tile.Owner) || tile.Owner == "CUL_NONE") return true;
-
-                var diplomacy = DiplomacyManager.Instance;
-
-                return diplomacy != null && diplomacy.IsAtWar(unit.CultureId, tile.Owner);
-            }
-
-            private static Vector2 FindCapturableTile(Unit unit, TileManager tileManager, UnitSpatialGrid grid, int searchRadius)
-            {
-                Vector2Int unitTilePos = tileManager.GetClosestTilePos(unit.Position);
-
-                float bestScore = float.MaxValue;
-
-                Vector2 bestTarget = Vector2.zero;
-
-                var nearbyUnits = grid.GetUnitsInRadius(unit.Position, searchRadius * 1.5f);
-
-                for (int dy = -searchRadius; dy <= searchRadius; dy++)
-                {
-                    for (int dx = -searchRadius; dx <= searchRadius; dx++)
-                    {
-                        int nx = unitTilePos.x + dx;
-                        int ny = unitTilePos.y + dy;
-
-                        if (nx < 0 || nx >= tileManager.WorldWidth || ny < 0 || ny >= tileManager.WorldHeight) continue;
-
-                        var tile = tileManager.GetTile(nx, ny);
-
-                        if (!CanUnitCaptureTile(unit, tile)) continue;
-
-                        if (!string.IsNullOrEmpty(tile.CapturingCultureId) && tile.CapturingCultureId != unit.CultureId && tile.CaptureProgress > 25f)
-                        {
-                            if (DiplomacyManager.Instance == null || !DiplomacyManager.Instance.IsAtWar(unit.CultureId, tile.CapturingCultureId))
-                            {
-                                continue;
-                            }
-                        }
-
-                        Vector2 tileCenter = tileManager.GetTileCenter(nx, ny);
-
-                        bool claimedByAlly = false;
-
-                        for (int i = 0; i < nearbyUnits.Count; i++)
-                        {
-                            var other = nearbyUnits[i];
-
-                            if (other == unit || !other.IsAlive || other.CultureId != unit.CultureId) continue;
-
-                            if (Vector2.Distance(other.Position, tileCenter) < 0.6f || (other.HasTarget && Vector2.Distance(other.TargetPosition, tileCenter) < 0.6f))
-                            {
-                                claimedByAlly = true;
-
-                                break;
-                            }
-                        }
-
-                        if (claimedByAlly) continue;
-
-                        float score = Vector2.Distance(unit.Position, tileCenter) + Random.Range(0f, 1.5f);
-                        
-                        if (!string.IsNullOrEmpty(tile.Owner) && tile.Owner != "CUL_NONE")
-                        {
-                            score -= 4.0f;
-
-                            if (tile.Structure != TileStructureType.None) score -= 8.0f;
-                        }
-
-                        if (score < bestScore)
-                        {
-                            bestScore = score;
-
-                            bestTarget = tileCenter;
-                        }
-                    }
-                }
-
-                return bestTarget;
             }
 
             private static void ExecutePlayerOrder(Unit unit)
