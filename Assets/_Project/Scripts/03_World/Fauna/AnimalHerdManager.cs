@@ -194,7 +194,7 @@ namespace ER.World.Fauna
 
         private void HandleFaunaTick(WorldTimeData timeData)
         {
-            if (!isInitialized || animals.Length == 0 || populationManager == null)
+            if (!isInitialized || animals.Length == 0 || populationManager == null || gridManager == null)
             {
                 return;
             }
@@ -202,6 +202,16 @@ namespace ER.World.Fauna
             NativeArray<PopData> pops = populationManager.ActivePops;
 
             int popCount = populationManager.TotalPopulationCount;
+
+            float tileSize = gridManager.MapConfig.TileWorldSize;
+
+            float minBoundX = 35.0f;
+
+            float maxBoundX = (gridManager.MapConfig.MapWidth * tileSize) - 35.0f;
+
+            float minBoundY = 35.0f;
+
+            float maxBoundY = (gridManager.MapConfig.MapHeight * tileSize) - 35.0f;
 
             for (int i = 0; i < animals.Length; i++)
             {
@@ -266,9 +276,9 @@ namespace ER.World.Fauna
                             fleeDir = math.normalize(fleeDir + backToPastureDir * 1.5f);
                         }
 
-                        animal.TargetPositionX = animal.WorldPositionX + fleeDir.x * 16.0f;
+                        animal.TargetPositionX = Mathf.Clamp(animal.WorldPositionX + fleeDir.x * 16.0f, minBoundX, maxBoundX);
 
-                        animal.TargetPositionY = animal.WorldPositionY + fleeDir.y * 16.0f;
+                        animal.TargetPositionY = Mathf.Clamp(animal.WorldPositionY + fleeDir.y * 16.0f, minBoundY, maxBoundY);
                     }
                 }
                 else
@@ -300,9 +310,9 @@ namespace ER.World.Fauna
                 {
                     float2 moveDir = math.normalize(targetPos - animalPos);
 
-                    animal.WorldPositionX += moveDir.x * currentSpeed;
+                    animal.WorldPositionX = Mathf.Clamp(animal.WorldPositionX + moveDir.x * currentSpeed, minBoundX, maxBoundX);
 
-                    animal.WorldPositionY += moveDir.y * currentSpeed;
+                    animal.WorldPositionY = Mathf.Clamp(animal.WorldPositionY + moveDir.y * currentSpeed, minBoundY, maxBoundY);
 
                     animal.VelocityX = moveDir.x * currentSpeed;
 
@@ -312,9 +322,9 @@ namespace ER.World.Fauna
                 {
                     Vector2 roam = UnityEngine.Random.insideUnitCircle * 8.0f;
 
-                    animal.TargetPositionX = animal.PastureCenterX + roam.x;
+                    animal.TargetPositionX = Mathf.Clamp(animal.PastureCenterX + roam.x, minBoundX, maxBoundX);
 
-                    animal.TargetPositionY = animal.PastureCenterY + roam.y;
+                    animal.TargetPositionY = Mathf.Clamp(animal.PastureCenterY + roam.y, minBoundY, maxBoundY);
                 }
 
                 animals[i] = animal;

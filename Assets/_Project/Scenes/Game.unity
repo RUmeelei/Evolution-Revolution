@@ -580,6 +580,76 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 143228214}
   m_CullTransparentMesh: 1
+--- !u!1 &182846781
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 182846782}
+  - component: {fileID: 182846784}
+  - component: {fileID: 182846783}
+  m_Layer: 0
+  m_Name: CultureContext
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &182846782
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 182846781}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 951655712}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &182846783
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 182846781}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad89f0dfe722cee40984462181dbe6a4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ER.World.Culture.ShrineManager
+  totemPlacementDistance: 16
+  defaultAuraRadius: 32
+  polityManager: {fileID: 1040313730}
+  gridManager: {fileID: 2012844967}
+  drawShrineGizmos: 1
+--- !u!114 &182846784
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 182846781}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 266323bfdf160814fb84fdeb2ffb28ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ER.World.Culture.PolityMoraleManager
+  nominalMorale: 70
+  unburiedCorpsePenalty: 6
+  maxCorpseMoraleDrop: 35
+  sacredSiteProximityBonus: 12
+  clockManager: {fileID: 644690046}
+  populationManager: {fileID: 997445035}
+  shrineManager: {fileID: 182846783}
+  polityManager: {fileID: 1040313730}
 --- !u!1 &306527513
 GameObject:
   m_ObjectHideFlags: 0
@@ -1115,6 +1185,56 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 625372264}
   m_CullTransparentMesh: 1
+--- !u!1 &636104970
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 636104971}
+  - component: {fileID: 636104972}
+  m_Layer: 0
+  m_Name: InteractionContext
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &636104971
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 636104970}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 951655712}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &636104972
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 636104970}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8419f85dde8a3814b84a28193e50b292, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ER.World.Command.Interaction.StrategicInteractionManager
+  selectionRingColor: {r: 0.2, g: 0.9, b: 1, a: 0.9}
+  ringRadius: 1.35
+  populationManager: {fileID: 997445035}
+  constructionManager: {fileID: 1187646718}
+  inventoryManager: {fileID: 1671128645}
+  polityManager: {fileID: 1040313730}
 --- !u!1 &644690043
 GameObject:
   m_ObjectHideFlags: 0
@@ -1334,6 +1454,8 @@ MonoBehaviour:
   householdManager: {fileID: 102948839}
   herdManager: {fileID: 1754104360}
   constructionManager: {fileID: 1187646718}
+  shrineManager: {fileID: 182846783}
+  craftingManager: {fileID: 510088197}
 --- !u!1 &836027360
 GameObject:
   m_ObjectHideFlags: 0
@@ -1503,6 +1625,9 @@ Transform:
   - {fileID: 510088196}
   - {fileID: 1754104359}
   - {fileID: 1187646717}
+  - {fileID: 1129491820}
+  - {fileID: 636104971}
+  - {fileID: 182846782}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &985251234
@@ -1696,7 +1821,7 @@ MonoBehaviour:
   inventoryManager: {fileID: 1671128645}
   gridManager: {fileID: 2012844967}
   householdManager: {fileID: 102948839}
-  drawPopulationGizmos: 1
+  drawPopulationGizmos: 0
   drawVelocityVectors: 0
   showVitalsGizmoColor: 1
 --- !u!1 &1040313728
@@ -2015,6 +2140,62 @@ MonoBehaviour:
   gridManager: {fileID: 2012844967}
   communicationNetwork: {fileID: 1282253244}
   macroNavManager: {fileID: 1495341607}
+--- !u!1 &1129491819
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1129491820}
+  - component: {fileID: 1129491821}
+  m_Layer: 0
+  m_Name: CrowdVisualContext
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1129491820
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1129491819}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 951655712}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1129491821
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1129491819}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 12c93c77f86565d458311c3a25a08f17, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ER.World.Population.Visual.CrowdLayeredRenderer
+  bodySprite: {fileID: 21300000, guid: abb38f3b5402d7946a50053d89dc81e1, type: 3}
+  furParkaSprite: {fileID: 21300000, guid: b3b6a5c57c7c6af49919cdde52b75f0a, type: 3}
+  spearSprite: {fileID: 21300000, guid: a17f17905cb6f96479d08086a3d765a0, type: 3}
+  woodLogSprite: {fileID: 21300000, guid: b85d0774d160a1b46b3207c51e8fefa8, type: 3}
+  baseScale: 1.6
+  walkBobbingSpeed: 14
+  walkTiltAngle: 6.5
+  toolForwardOffset: 0.55
+  toolSideOffset: 0.45
+  populationManager: {fileID: 997445035}
+  taskManager: {fileID: 697408585}
+  inventoryManager: {fileID: 1671128645}
 --- !u!1 &1149056983
 GameObject:
   m_ObjectHideFlags: 0
@@ -2202,7 +2383,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ER.World.Chunks.ChunkCullingSystem
   targetCamera: {fileID: 1915426015}
   chunkManager: {fileID: 1252515278}
-  hotkeysDebugger: {fileID: 0}
+  hotkeysDebugger: {fileID: 644690045}
   visibleChunksCount: 0
   totalCulledChunksCount: 0
 --- !u!1 &1264527940
@@ -2516,6 +2697,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1671128644}
   - component: {fileID: 1671128645}
+  - component: {fileID: 1671128646}
   m_Layer: 0
   m_Name: InventoryContext
   m_TagString: Untagged
@@ -2552,6 +2734,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ER.World.Inventory.InventoryManager
   itemDatabase: {fileID: 11400000, guid: 00f19335c068c9649b7d72dc30002a0a, type: 2}
   clockManager: {fileID: 644690046}
+--- !u!114 &1671128646
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1671128643}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b377220c9c6836b4f9afe26e4b5bb396, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ER.World.Inventory.FoodPreservationManager
+  rawMeatSpoilRate: 0.25
+  berrySpoilRate: 0.15
+  clockManager: {fileID: 644690046}
+  inventoryManager: {fileID: 1671128645}
+  polityManager: {fileID: 1040313730}
 --- !u!1 &1705556885
 GameObject:
   m_ObjectHideFlags: 0
@@ -2937,7 +3136,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ER.World.CameraControl.StrategicCameraController
   mapConfig: {fileID: 11400000, guid: df02c5e37f9480b41af7953a902fd03e, type: 2}
-  minZoom: 35
+  minZoom: 1
   maxZoom: 65000
   zoomSensitivity: 3
   zoomDamping: 10

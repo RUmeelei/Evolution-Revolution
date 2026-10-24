@@ -99,11 +99,6 @@ namespace ER.World.Crafting
 
             SpawnSettlementStations();
 
-            if (clockManager != null)
-            {
-                clockManager.OnDayPassed += HandleDailyProductionCycle;
-            }
-
             isInitialized = true;
         }
 
@@ -123,17 +118,14 @@ namespace ER.World.Crafting
 
             recipes.Add(CraftingRecipeData.Create(1, CraftingStationType.TanningRack, 5, 2, 6, 2, 10.0f));
 
-            recipes.Add(CraftingRecipeData.Create(2, CraftingStationType.TanningRack, 6, 3, 7, 1, 15.0f));
+            recipes.Add(CraftingRecipeData.Create(2, CraftingStationType.TanningRack, 6, 2, 7, 1, 15.0f));
+
+            recipes.Add(CraftingRecipeData.Create(3, CraftingStationType.DryingRack, 4, 2, 8, 2, 12.0f, 1, 1));
         }
 
 
         private void OnDestroy()
         {
-            if (clockManager != null)
-            {
-                clockManager.OnDayPassed -= HandleDailyProductionCycle;
-            }
-
             DisposeStorage();
         }
 
@@ -192,9 +184,15 @@ namespace ER.World.Crafting
 
                     RegisterStation(anchor.OwnerPolityId, anchor.AnchorId, CraftingStationType.FlintKnappingStation, sx, sy);
                 }
+
+                float dryX = centerX + stationPlacementRadius * 0.9f;
+
+                float dryY = centerY - stationPlacementRadius * 0.6f;
+
+                RegisterStation(anchor.OwnerPolityId, anchor.AnchorId, CraftingStationType.DryingRack, dryX, dryY);
             }
 
-            Debug.Log($"[CraftingManager] Successfully established {stations.Length} crafting stations across settlements.");
+            Debug.Log($"[CraftingManager] Established {stations.Length} physical crafting stations.");
         }
 
 
@@ -207,72 +205,6 @@ namespace ER.World.Crafting
             stations.Add(station);
 
             return id;
-        }
-
-
-        private void HandleDailyProductionCycle(WorldTimeData timeData)
-        {
-            if (!isInitialized || inventoryManager == null || polityManager == null)
-            {
-                return;
-            }
-
-            var anchors = polityManager.Anchors;
-
-            for (int a = 0; a < anchors.Count; a++)
-            {
-                int storageId = anchors[a].StorageInventoryId;
-
-                if (storageId <= 0) continue;
-
-                for (int r = 0; r < recipes.Count; r++)
-                {
-                    ProcessRecipeBatch(storageId, recipes[r], anchors[a].AnchorId);
-                }
-            }
-        }
-
-
-        private void ProcessRecipeBatch(int storageId, CraftingRecipeData recipe, ushort anchorId)
-        {
-            if (!HasStationAvailable(anchorId, recipe.RequiredStation))
-            {
-                return;
-            }
-
-            uint countA = inventoryManager.GetItemCount(storageId, recipe.InputItemA);
-
-            if (countA < recipe.InputCountA)
-            {
-                return;
-            }
-
-            if (recipe.InputItemB > 0)
-            {
-                uint countB = inventoryManager.GetItemCount(storageId, recipe.InputItemB);
-
-                if (countB < recipe.InputCountB)
-                {
-                    return;
-                }
-            }
-
-            inventoryManager.ExecuteTransfer(storageId, 0, recipe.InputItemA, recipe.InputCountA, out uint removedA);
-
-            if (removedA >= recipe.InputCountA)
-            {
-                if (recipe.InputItemB > 0)
-                {
-                    inventoryManager.ExecuteTransfer(storageId, 0, recipe.InputItemB, recipe.InputCountB, out _);
-                }
-
-                inventoryManager.TryAddItem(storageId, recipe.OutputItem, recipe.OutputCount);
-
-                if (recipe.OutputItem == 7)
-                {
-                    Debug.Log($"[CraftingManager] Produced Warm Fur Parka in Settlement {anchorId}!");
-                }
-            }
         }
 
 
@@ -290,25 +222,42 @@ namespace ER.World.Crafting
         }
 
 
-        public bool TryGetNearestStationPosition(float2 popPos, CraftingStationType type, out float2 stationPos)
+        public bool TryGetNearestAvailableStation(
+            float2 popPos,
+            ushort anchorId,
+            CraftingStationType type,
+            System.Func<int, bool> isStationBusyFunc,
+            out int stationId,
+            out float2 stationPos)
         {
             float minDist = float.MaxValue;
 
             stationPos = float2.zero;
 
+            stationId = -1;
+
             bool found = false;
 
             for (int i = 0; i < stations.Length; i++)
             {
-                if (stations[i].StationType == type && stations[i].IsActive)
+                CraftingStationData st = stations[i];
+
+                if (st.HomeAnchorId == anchorId && st.StationType == type && st.IsActive)
                 {
-                    float dist = math.distance(popPos, new float2(stations[i].WorldPositionX, stations[i].WorldPositionY));
+                    if (isStationBusyFunc != null && isStationBusyFunc(st.StationId))
+                    {
+                        continue;
+                    }
+
+                    float dist = math.distance(popPos, new float2(st.WorldPositionX, st.WorldPositionY));
 
                     if (dist < minDist)
                     {
                         minDist = dist;
 
-                        stationPos = new float2(stations[i].WorldPositionX, stations[i].WorldPositionY);
+                        stationPos = new float2(st.WorldPositionX, st.WorldPositionY);
+
+                        stationId = st.StationId;
 
                         found = true;
                     }
@@ -345,6 +294,12 @@ namespace ER.World.Crafting
                     Gizmos.color = new Color(0.45f, 0.55f, 0.65f);
 
                     Gizmos.DrawSphere(pos, 0.75f);
+                }
+                else if (s.StationType == CraftingStationType.DryingRack)
+                {
+                    Gizmos.color = new Color(0.7f, 0.25f, 0.15f);
+
+                    Gizmos.DrawCube(pos, new Vector3(2.2f, 0.6f, 1.8f));
                 }
             }
         }

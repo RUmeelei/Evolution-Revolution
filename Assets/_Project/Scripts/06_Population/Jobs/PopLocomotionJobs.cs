@@ -82,10 +82,11 @@ namespace ER.World.Population
         {
             PopData pop = ReadPops[index];
 
-            if (!pop.IsAlive)
+            if (!pop.IsAlive || pop.ActivityState == PopActivityState.Resting)
             {
+                pop.VelocityX = 0.0f;
+                pop.VelocityY = 0.0f;
                 WritePops[index] = pop;
-
                 return;
             }
 

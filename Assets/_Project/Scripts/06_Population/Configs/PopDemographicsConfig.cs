@@ -5,36 +5,42 @@ namespace ER.World.Population
     [CreateAssetMenu(fileName = "PopDemographicsConfig", menuName = "ER/06_Population/Demographics Config")]
     public class PopDemographicsConfig : ScriptableObject
     {
-        [Header("Life Stage Thresholds (Age in Days)")]
-        [SerializeField] private ushort infantMaxDays = 1080;
+        [Header("Life Stage Thresholds (in Days)")]
+        [SerializeField] private ushort infantMaxDays = 64;
 
-        [SerializeField] private ushort childMaxDays = 4320;
+        [SerializeField] private ushort childMaxDays = 256;
 
-        [SerializeField] private ushort youthMaxDays = 6480;
+        [SerializeField] private ushort youthMaxDays = 768;
 
-        [SerializeField] private ushort adultMaxDays = 18000;
+        [SerializeField] private ushort adultMaxDays = 2880;
 
-
-        [Header("Reproduction Dynamics")]
-        [SerializeField] private ushort pregnancyDurationDays = 270;
-
-        [SerializeField] private ushort postPartumCooldownDays = 180;
-
-        [SerializeField] private float conceptionMinCalories = 1600.0f;
-
-        [SerializeField] private float conceptionMinBodyTemp = 35.0f;
-
-        [SerializeField] private byte conceptionMinHealth = 180;
-
-        [SerializeField] [Range(0.01f, 1.0f)] private float dailyConceptionProbability = 0.05f;
+        [SerializeField] private ushort elderBaseMortalityAgeDays = 2880;
 
 
-        [Header("Senescence & Natural Mortality")]
-        [SerializeField] private ushort elderBaseMortalityAgeDays = 18000;
+        [Header("Starting Population Age Range (in Days)")]
+        [SerializeField] private ushort startingAdultMinAgeDays = 1280;
 
-        [SerializeField] private float baseSenescenceDailyChance = 0.0008f;
+        [SerializeField] private ushort startingAdultMaxAgeDays = 2240;
 
-        [SerializeField] private float senescenceAgeCurveMultiplier = 0.00025f;
+
+        [Header("Senescence & Mortality")]
+        [SerializeField] private float baseSenescenceDailyChance = 0.012f;
+
+        [SerializeField] private float senescenceAgeCurveMultiplier = 0.0008f;
+
+
+        [Header("Reproduction & Matrimony")]
+        [SerializeField] private ushort pregnancyDurationDays = 48;
+
+        [SerializeField] private ushort postPartumCooldownDays = 16;
+
+        [SerializeField] private float dailyConceptionProbability = 0.04f;
+
+        [SerializeField] private float conceptionMinHealth = 180.0f;
+
+        [SerializeField] private float conceptionMinCalories = 1200.0f;
+
+        [SerializeField] private float conceptionMinBodyTemp = 35.5f;
 
 
         public ushort InfantMaxDays => infantMaxDays;
@@ -45,22 +51,40 @@ namespace ER.World.Population
 
         public ushort AdultMaxDays => adultMaxDays;
 
+        public ushort ElderBaseMortalityAgeDays => elderBaseMortalityAgeDays;
+
+        public ushort StartingAdultMinAgeDays => startingAdultMinAgeDays;
+
+        public ushort StartingAdultMaxAgeDays => startingAdultMaxAgeDays;
+
+        public float BaseSenescenceDailyChance => baseSenescenceDailyChance;
+
+        public float SenescenceAgeCurveMultiplier => senescenceAgeCurveMultiplier;
+
         public ushort PregnancyDurationDays => pregnancyDurationDays;
 
         public ushort PostPartumCooldownDays => postPartumCooldownDays;
+
+        public float DailyConceptionProbability => dailyConceptionProbability;
+
+        public float ConceptionMinHealth => conceptionMinHealth;
 
         public float ConceptionMinCalories => conceptionMinCalories;
 
         public float ConceptionMinBodyTemp => conceptionMinBodyTemp;
 
-        public byte ConceptionMinHealth => conceptionMinHealth;
 
-        public float DailyConceptionProbability => dailyConceptionProbability;
+        public PopLifeStage ResolveLifeStage(ushort ageInDays)
+        {
+            if (ageInDays < infantMaxDays) return PopLifeStage.Infant;
 
-        public ushort ElderBaseMortalityAgeDays => elderBaseMortalityAgeDays;
+            if (ageInDays < childMaxDays) return PopLifeStage.Child;
 
-        public float BaseSenescenceDailyChance => baseSenescenceDailyChance;
+            if (ageInDays < youthMaxDays) return PopLifeStage.Youth;
 
-        public float SenescenceAgeCurveMultiplier => senescenceAgeCurveMultiplier;
+            if (ageInDays < adultMaxDays) return PopLifeStage.Adult;
+
+            return PopLifeStage.Elder;
+        }
     }
 }

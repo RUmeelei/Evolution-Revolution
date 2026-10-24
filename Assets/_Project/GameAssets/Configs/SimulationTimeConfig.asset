@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 24a78cd57e5ebb148a099f607bb4edd8, type: 3}
   m_Name: SimulationTimeConfig
   m_EditorClassIdentifier: Assembly-CSharp::ER.Simulation.Time.SimulationTimeConfig
-  baseSecondsPerTick: 1
+  baseSecondsPerTick: 0.1
   maxFrameAccumulationTime: 1
   speed1: 1
   speed2: 2

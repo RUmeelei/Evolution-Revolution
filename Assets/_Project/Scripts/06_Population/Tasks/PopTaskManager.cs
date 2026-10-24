@@ -11,6 +11,8 @@ using ER.World.Resources;
 using ER.World.Housing;
 using ER.World.Fauna;
 using ER.World.Construction;
+using ER.World.Culture;
+using ER.World.Crafting;
 
 namespace ER.World.Population.Tasks
 {
@@ -27,6 +29,16 @@ namespace ER.World.Population.Tasks
         [SerializeField] private float maxCarryingWeightKg = 12.0f;
 
         [SerializeField] private byte hunterAttackPower = 28;
+
+
+        [Header("Target Quota Limits")]
+        [SerializeField] private int maxHuntersPerAnimal = 3;
+
+        [SerializeField] private int maxWorkersPerResourceNode = 2;
+
+        [SerializeField] private int maxBuildersPerBlueprint = 4;
+
+        [SerializeField] private int maxHaulersPerBlueprint = 2;
 
 
         [Header("References")]
@@ -47,6 +59,10 @@ namespace ER.World.Population.Tasks
         [SerializeField] private AnimalHerdManager herdManager;
 
         [SerializeField] private ConstructionManager constructionManager;
+
+        [SerializeField] private ShrineManager shrineManager;
+
+        [SerializeField] private CraftingManager craftingManager;
 
 
         private NativeList<PopTaskData> popTasks;
@@ -102,6 +118,10 @@ namespace ER.World.Population.Tasks
 
             if (constructionManager == null) constructionManager = ConstructionManager.Instance;
 
+            if (shrineManager == null) shrineManager = ShrineManager.Instance;
+
+            if (craftingManager == null) craftingManager = CraftingManager.Instance;
+
             if (resourceManager != null) resourceManager.EnsureInitialized();
 
             if (populationManager != null) populationManager.EnsureInitialized();
@@ -111,6 +131,10 @@ namespace ER.World.Population.Tasks
             if (herdManager != null) herdManager.EnsureInitialized();
 
             if (constructionManager != null) constructionManager.EnsureInitialized();
+
+            if (shrineManager != null) shrineManager.EnsureInitialized();
+
+            if (craftingManager != null) craftingManager.EnsureInitialized();
 
             if (clockManager != null)
             {
@@ -184,6 +208,17 @@ namespace ER.World.Population.Tasks
 
                 PopTaskData task = popTasks[i];
 
+                if (task.TaskType == PopTaskType.RestAtDwelling)
+                {
+                    ExecuteRestAtDwellingTask(ref pop, ref task);
+
+                    popTasks[i] = task;
+
+                    pops[i] = pop;
+
+                    continue;
+                }
+
                 if (task.TaskType == PopTaskType.None)
                 {
                     if (EvaluateAndAssignTask(ref pop, ref task))
@@ -214,8 +249,65 @@ namespace ER.World.Population.Tasks
         }
 
 
+        private int CountWorkersTargetingNode(PopTaskType taskType, int targetNodeId)
+        {
+            int count = 0;
+
+            for (int i = 0; i < popTasks.Length; i++)
+            {
+                if (popTasks[i].TaskType == taskType && popTasks[i].TargetNodeId == targetNodeId)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+
         private bool EvaluateAndAssignTask(ref PopData pop, ref PopTaskData task)
         {
+            if (clockManager != null)
+            {
+                int hour = clockManager.CurrentTime.CurrentHour;
+
+                if (hour >= 21 || hour < 5)
+                {
+                    Vector2 sleepTarget;
+
+                    if (pop.DwellingId > 0 && householdManager != null && householdManager.TryGetDwellingPosition(pop.DwellingId, out float2 dPos))
+                    {
+                        sleepTarget = new Vector2(dPos.x + UnityEngine.Random.Range(-1.2f, 1.2f), dPos.y + UnityEngine.Random.Range(-1.2f, 1.2f));
+                    }
+                    else
+                    {
+                        sleepTarget = ResolveHearthPosition(pop.HomeAnchorId, pop.PopId);
+                    }
+
+                    task.PopId = pop.PopId;
+
+                    task.TaskType = PopTaskType.RestAtDwelling;
+
+                    task.TargetNodeId = pop.DwellingId;
+
+                    task.TargetWorldX = sleepTarget.x;
+
+                    task.TargetWorldY = sleepTarget.y;
+
+                    task.CurrentProgress = 0.0f;
+
+                    task.RequiredWork = 10.0f;
+
+                    pop.TargetPositionX = sleepTarget.x;
+
+                    pop.TargetPositionY = sleepTarget.y;
+
+                    pop.ActivityState = PopActivityState.Moving;
+
+                    return true;
+                }
+            }
+
             if (pop.CurrentCalories < 900.0f)
             {
                 AssignHaulTask(ref pop, ref task);
@@ -223,14 +315,16 @@ namespace ER.World.Population.Tasks
                 return true;
             }
 
-            if (pop.BodyTemperature < 35.8f)
+            if (pop.BodyTemperature < 34.0f && pop.ActivityState != PopActivityState.Resting)
             {
-                if (pop.BodyTemperature < 33.5f || pop.ActivityState == PopActivityState.Resting)
-                {
-                    AssignHaulTask(ref pop, ref task);
+                AssignHaulTask(ref pop, ref task);
 
-                    return true;
-                }
+                return true;
+            }
+
+            if (pop.ActivityState == PopActivityState.Resting && pop.BodyTemperature >= 36.4f)
+            {
+                pop.ActivityState = PopActivityState.Idle;
             }
 
             if (inventoryManager != null && inventoryManager.TryGetHeader(pop.PersonalInventoryId, out InventoryHeaderData header))
@@ -245,9 +339,19 @@ namespace ER.World.Population.Tasks
 
             Vector2 popPos = new Vector2(pop.WorldPositionX, pop.WorldPositionY);
 
-            Vector2 hearthPos = ResolveHearthPosition(pop.HomeAnchorId);
+            Vector2 hearthPos = ResolveHearthPosition(pop.HomeAnchorId, pop.PopId);
+
+            if (EvaluateBurialTasks(ref pop, ref task))
+            {
+                return true;
+            }
 
             if (EvaluateConstructionTasks(ref pop, ref task, hearthPos))
+            {
+                return true;
+            }
+
+            if (EvaluateCraftingTasks(ref pop, ref task, hearthPos))
             {
                 return true;
             }
@@ -266,15 +370,20 @@ namespace ER.World.Population.Tasks
 
                     if (!animal.IsActive) continue;
 
+                    if (CountWorkersTargetingNode(PopTaskType.HuntAnimal, animal.AnimalId) >= maxHuntersPerAnimal)
+                    {
+                        continue;
+                    }
+
                     Vector2 aPos = new Vector2(animal.WorldPositionX, animal.WorldPositionY);
 
                     float distFromHearth = Vector2.Distance(aPos, hearthPos);
 
-                    if (distFromHearth > 105.0f) continue;
+                    if (distFromHearth > 110.0f) continue;
 
                     float dist = Vector2.Distance(popPos, aPos);
 
-                    if (dist < 55.0f && dist < minAnimalDist)
+                    if (dist < 60.0f && dist < minAnimalDist)
                     {
                         minAnimalDist = dist;
 
@@ -334,9 +443,19 @@ namespace ER.World.Population.Tasks
                     continue;
                 }
 
+                PopTaskType candidateTaskType = PopTaskType.ForageBerries;
+
+                if (node.NodeType == ResourceNodeType.FallenTree) candidateTaskType = PopTaskType.HarvestWood;
+                else if (node.NodeType == ResourceNodeType.FlintDeposit) candidateTaskType = PopTaskType.MineFlint;
+
+                if (CountWorkersTargetingNode(candidateTaskType, node.NodeId) >= maxWorkersPerResourceNode)
+                {
+                    continue;
+                }
+
                 float dist = Vector2.Distance(popPos, new Vector2(node.WorldPositionX, node.WorldPositionY));
 
-                if (dist < 40.0f && dist < minDistance)
+                if (dist < 45.0f && dist < minDistance)
                 {
                     minDistance = dist;
 
@@ -391,6 +510,77 @@ namespace ER.World.Population.Tasks
         }
 
 
+        private bool EvaluateBurialTasks(ref PopData pop, ref PopTaskData task)
+        {
+            if (shrineManager == null || populationManager == null || pop.LifeStage < PopLifeStage.Youth)
+            {
+                return false;
+            }
+
+            NativeArray<PopData> pops = populationManager.ActivePops;
+
+            int count = populationManager.TotalPopulationCount;
+
+            Vector2 popPos = new Vector2(pop.WorldPositionX, pop.WorldPositionY);
+
+            int deadPopIndex = -1;
+
+            float minDeadDist = float.MaxValue;
+
+            for (int i = 0; i < count; i++)
+            {
+                PopData candidate = pops[i];
+
+                if (candidate.IsAlive || candidate.Health > 0 || candidate.IsBuried) continue;
+
+                if (candidate.WorldPositionX == 0.0f && candidate.WorldPositionY == 0.0f) continue;
+
+                if (CountWorkersTargetingNode(PopTaskType.BuryCorpse, i) >= 1)
+                {
+                    continue;
+                }
+
+                float dist = Vector2.Distance(popPos, new Vector2(candidate.WorldPositionX, candidate.WorldPositionY));
+
+                if (dist < 50.0f && dist < minDeadDist)
+                {
+                    minDeadDist = dist;
+
+                    deadPopIndex = i;
+                }
+            }
+
+            if (deadPopIndex >= 0)
+            {
+                PopData deadBody = pops[deadPopIndex];
+
+                task.PopId = pop.PopId;
+
+                task.TaskType = PopTaskType.BuryCorpse;
+
+                task.TargetNodeId = deadPopIndex;
+
+                task.TargetWorldX = deadBody.WorldPositionX;
+
+                task.TargetWorldY = deadBody.WorldPositionY;
+
+                task.CurrentProgress = 0.0f;
+
+                task.RequiredWork = 8.0f;
+
+                pop.TargetPositionX = deadBody.WorldPositionX;
+
+                pop.TargetPositionY = deadBody.WorldPositionY;
+
+                pop.ActivityState = PopActivityState.Moving;
+
+                return true;
+            }
+
+            return false;
+        }
+
+
         private bool EvaluateConstructionTasks(ref PopData pop, ref PopTaskData task, Vector2 hearthPos)
         {
             if (constructionManager == null || !constructionManager.IsInitialized || pop.LifeStage < PopLifeStage.Youth)
@@ -408,23 +598,36 @@ namespace ER.World.Population.Tasks
 
                 if (bp.State == BlueprintState.UnderConstruction)
                 {
+                    if (CountWorkersTargetingNode(PopTaskType.BuildStructure, bp.BlueprintId) >= maxBuildersPerBlueprint)
+                    {
+                        continue;
+                    }
+
+                    float angle = (pop.PopId * 0.785398f);
+
+                    float standRadius = 1.35f;
+
+                    float targetX = bp.WorldPositionX + Mathf.Cos(angle) * standRadius;
+
+                    float targetY = bp.WorldPositionY + Mathf.Sin(angle) * standRadius;
+
                     task.PopId = pop.PopId;
 
                     task.TaskType = PopTaskType.BuildStructure;
 
                     task.TargetNodeId = bp.BlueprintId;
 
-                    task.TargetWorldX = bp.WorldPositionX;
+                    task.TargetWorldX = targetX;
 
-                    task.TargetWorldY = bp.WorldPositionY;
+                    task.TargetWorldY = targetY;
 
                     task.CurrentProgress = 0.0f;
 
                     task.RequiredWork = 10.0f;
 
-                    pop.TargetPositionX = bp.WorldPositionX;
+                    pop.TargetPositionX = targetX;
 
-                    pop.TargetPositionY = bp.WorldPositionY;
+                    pop.TargetPositionY = targetY;
 
                     pop.ActivityState = PopActivityState.Moving;
 
@@ -433,6 +636,11 @@ namespace ER.World.Population.Tasks
 
                 if (bp.State == BlueprintState.AwaitingMaterials && inventoryManager != null && polityManager != null)
                 {
+                    if (CountWorkersTargetingNode(PopTaskType.HaulToConstruction, bp.BlueprintId) >= maxHaulersPerBlueprint)
+                    {
+                        continue;
+                    }
+
                     if (polityManager.TryGetAnchor(pop.HomeAnchorId, out PolityAnchorData anchor) && anchor.StorageInventoryId > 0)
                     {
                         ushort neededItem = 0;
@@ -448,6 +656,12 @@ namespace ER.World.Population.Tasks
 
                         if (neededItem > 0)
                         {
+                            float angle = (pop.PopId * 0.785398f);
+
+                            float targetX = bp.WorldPositionX + Mathf.Cos(angle) * 1.5f;
+
+                            float targetY = bp.WorldPositionY + Mathf.Sin(angle) * 1.5f;
+
                             uint hasInHands = inventoryManager.GetItemCount(pop.PersonalInventoryId, neededItem);
 
                             if (hasInHands > 0)
@@ -458,15 +672,15 @@ namespace ER.World.Population.Tasks
 
                                 task.TargetNodeId = bp.BlueprintId;
 
-                                task.TargetWorldX = bp.WorldPositionX;
+                                task.TargetWorldX = targetX;
 
-                                task.TargetWorldY = bp.WorldPositionY;
+                                task.TargetWorldY = targetY;
 
                                 task.YieldItemTypeId = neededItem;
 
-                                pop.TargetPositionX = bp.WorldPositionX;
+                                pop.TargetPositionX = targetX;
 
-                                pop.TargetPositionY = bp.WorldPositionY;
+                                pop.TargetPositionY = targetY;
 
                                 pop.ActivityState = PopActivityState.Moving;
 
@@ -474,7 +688,7 @@ namespace ER.World.Population.Tasks
                             }
                             else
                             {
-                                inventoryManager.ExecuteTransfer(anchor.StorageInventoryId, pop.PersonalInventoryId, neededItem, 1, out uint got);
+                                inventoryManager.ExecuteTransfer(anchor.StorageInventoryId, pop.PersonalInventoryId, neededItem, 2, out uint got);
 
                                 if (got > 0)
                                 {
@@ -484,15 +698,15 @@ namespace ER.World.Population.Tasks
 
                                     task.TargetNodeId = bp.BlueprintId;
 
-                                    task.TargetWorldX = bp.WorldPositionX;
+                                    task.TargetWorldX = targetX;
 
-                                    task.TargetWorldY = bp.WorldPositionY;
+                                    task.TargetWorldY = targetY;
 
                                     task.YieldItemTypeId = neededItem;
 
-                                    pop.TargetPositionX = bp.WorldPositionX;
+                                    pop.TargetPositionX = targetX;
 
-                                    pop.TargetPositionY = bp.WorldPositionY;
+                                    pop.TargetPositionY = targetY;
 
                                     pop.ActivityState = PopActivityState.Moving;
 
@@ -508,9 +722,107 @@ namespace ER.World.Population.Tasks
         }
 
 
+        private bool EvaluateCraftingTasks(ref PopData pop, ref PopTaskData task, Vector2 hearthPos)
+        {
+            if (craftingManager == null || inventoryManager == null || polityManager == null || pop.LifeStage < PopLifeStage.Youth)
+            {
+                return false;
+            }
+
+            if (!polityManager.TryGetAnchor(pop.HomeAnchorId, out PolityAnchorData anchor) || anchor.StorageInventoryId <= 0)
+            {
+                return false;
+            }
+
+            int storageId = anchor.StorageInventoryId;
+
+            uint rawMeat = inventoryManager.GetItemCount(storageId, 4);
+
+            uint wood = inventoryManager.GetItemCount(storageId, 1);
+
+            Vector2 popPos = new Vector2(pop.WorldPositionX, pop.WorldPositionY);
+
+            if (rawMeat >= 2 && wood >= 1)
+            {
+                if (craftingManager.TryGetNearestAvailableStation(
+                    new float2(popPos.x, popPos.y),
+                    pop.HomeAnchorId,
+                    CraftingStationType.DryingRack,
+                    stationId => CountWorkersTargetingNode(PopTaskType.CraftAtStation, stationId) >= 1,
+                    out int stationId,
+                    out float2 rackPos))
+                {
+                    task.PopId = pop.PopId;
+
+                    task.TaskType = PopTaskType.CraftAtStation;
+
+                    task.TargetNodeId = stationId;
+
+                    task.TargetWorldX = rackPos.x;
+
+                    task.TargetWorldY = rackPos.y;
+
+                    task.CurrentProgress = 0.0f;
+
+                    task.RequiredWork = 12.0f;
+
+                    task.YieldItemTypeId = 8;
+
+                    pop.TargetPositionX = rackPos.x;
+
+                    pop.TargetPositionY = rackPos.y;
+
+                    pop.ActivityState = PopActivityState.Moving;
+
+                    return true;
+                }
+            }
+
+            uint rawHides = inventoryManager.GetItemCount(storageId, 5);
+
+            if (rawHides >= 2)
+            {
+                if (craftingManager.TryGetNearestAvailableStation(
+                    new float2(popPos.x, popPos.y),
+                    pop.HomeAnchorId,
+                    CraftingStationType.TanningRack,
+                    stationId => CountWorkersTargetingNode(PopTaskType.CraftAtStation, stationId) >= 1,
+                    out int stationId,
+                    out float2 tanPos))
+                {
+                    task.PopId = pop.PopId;
+
+                    task.TaskType = PopTaskType.CraftAtStation;
+
+                    task.TargetNodeId = stationId;
+
+                    task.TargetWorldX = tanPos.x;
+
+                    task.TargetWorldY = tanPos.y;
+
+                    task.CurrentProgress = 0.0f;
+
+                    task.RequiredWork = 10.0f;
+
+                    task.YieldItemTypeId = 6;
+
+                    pop.TargetPositionX = tanPos.x;
+
+                    pop.TargetPositionY = tanPos.y;
+
+                    pop.ActivityState = PopActivityState.Moving;
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+
         private void AssignHaulTask(ref PopData pop, ref PopTaskData task)
         {
-            Vector2 targetPos = ResolveHearthPosition(pop.HomeAnchorId);
+            Vector2 targetPos = ResolveHearthPosition(pop.HomeAnchorId, pop.PopId);
 
             bool hasCargo = false;
 
@@ -551,9 +863,30 @@ namespace ER.World.Population.Tasks
 
         private void ExecuteActiveTask(ref PopData pop, ref PopTaskData task, float tileSize)
         {
+            if (task.TaskType == PopTaskType.RestAtDwelling)
+            {
+                ExecuteRestAtDwellingTask(ref pop, ref task);
+
+                return;
+            }
+
+            if (task.TaskType == PopTaskType.BuryCorpse)
+            {
+                ExecuteBurialTask(ref pop, ref task);
+
+                return;
+            }
+
             if (task.TaskType == PopTaskType.HuntAnimal)
             {
                 ExecuteHuntingTask(ref pop, ref task);
+
+                return;
+            }
+
+            if (task.TaskType == PopTaskType.CraftAtStation)
+            {
+                ExecuteCraftAtStationTask(ref pop, ref task);
 
                 return;
             }
@@ -651,8 +984,22 @@ namespace ER.World.Population.Tasks
         }
 
 
-        private void ExecuteHaulToConstructionTask(ref PopData pop, ref PopTaskData task)
+        private void ExecuteRestAtDwellingTask(ref PopData pop, ref PopTaskData task)
         {
+            if (clockManager != null)
+            {
+                int hour = clockManager.CurrentTime.CurrentHour;
+
+                if (hour >= 5 && hour < 21)
+                {
+                    task.TaskType = PopTaskType.None;
+
+                    pop.ActivityState = PopActivityState.Idle;
+
+                    return;
+                }
+            }
+
             Vector2 popPos = new Vector2(pop.WorldPositionX, pop.WorldPositionY);
 
             Vector2 targetPos = new Vector2(task.TargetWorldX, task.TargetWorldY);
@@ -668,28 +1015,15 @@ namespace ER.World.Population.Tasks
                 return;
             }
 
-            if (constructionManager != null && inventoryManager != null)
-            {
-                uint count = inventoryManager.GetItemCount(pop.PersonalInventoryId, task.YieldItemTypeId);
+            pop.ActivityState = PopActivityState.Resting;
 
-                if (count > 0)
-                {
-                    inventoryManager.ExecuteTransfer(pop.PersonalInventoryId, 0, task.YieldItemTypeId, 1, out uint transferred);
+            pop.VelocityX = 0.0f;
 
-                    if (transferred > 0)
-                    {
-                        constructionManager.DeliverMaterialToBlueprint(task.TargetNodeId, task.YieldItemTypeId, 1);
-                    }
-                }
-            }
-
-            task.TaskType = PopTaskType.None;
-
-            pop.ActivityState = PopActivityState.Idle;
+            pop.VelocityY = 0.0f;
         }
 
 
-        private void ExecuteBuildStructureTask(ref PopData pop, ref PopTaskData task)
+        private void ExecuteCraftAtStationTask(ref PopData pop, ref PopTaskData task)
         {
             Vector2 popPos = new Vector2(pop.WorldPositionX, pop.WorldPositionY);
 
@@ -708,16 +1042,272 @@ namespace ER.World.Population.Tasks
 
             pop.ActivityState = PopActivityState.Working;
 
-            if (constructionManager != null)
-            {
-                bool isFinished = constructionManager.ApplyConstructionLabor(task.TargetNodeId, baseWorkSpeedPerTick * 0.4f);
+            task.CurrentProgress += baseWorkSpeedPerTick * 0.45f;
 
-                if (isFinished)
+            if (task.CurrentProgress >= task.RequiredWork)
+            {
+                task.CurrentProgress = 0.0f;
+
+                if (polityManager != null && polityManager.TryGetAnchor(pop.HomeAnchorId, out PolityAnchorData anchor) && inventoryManager != null)
+                {
+                    int storageId = anchor.StorageInventoryId;
+
+                    if (task.YieldItemTypeId == 8)
+                    {
+                        uint meat = inventoryManager.GetItemCount(storageId, 4);
+
+                        uint wood = inventoryManager.GetItemCount(storageId, 1);
+
+                        if (meat >= 2 && wood >= 1)
+                        {
+                            inventoryManager.ExecuteTransfer(storageId, 0, 4, 2, out _);
+
+                            inventoryManager.ExecuteTransfer(storageId, 0, 1, 1, out _);
+
+                            inventoryManager.TryAddItem(storageId, 8, 2);
+
+                            Debug.Log($"[PopTaskManager] Pop #{pop.PopId} smoked 2x Meat at Station #{task.TargetNodeId}!");
+                        }
+                    }
+                    else if (task.YieldItemTypeId == 6)
+                    {
+                        uint hides = inventoryManager.GetItemCount(storageId, 5);
+
+                        if (hides >= 2)
+                        {
+                            inventoryManager.ExecuteTransfer(storageId, 0, 5, 2, out _);
+
+                            inventoryManager.TryAddItem(storageId, 6, 2);
+
+                            Debug.Log($"[PopTaskManager] Pop #{pop.PopId} cured 2x Fur at Station #{task.TargetNodeId}!");
+                        }
+                    }
+                }
+
+                task.TaskType = PopTaskType.None;
+
+                pop.ActivityState = PopActivityState.Idle;
+            }
+        }
+
+
+        private void ExecuteHaulToConstructionTask(ref PopData pop, ref PopTaskData task)
+        {
+            if (constructionManager == null || !constructionManager.TryGetBlueprint(task.TargetNodeId, out BuildingBlueprintData bp, out _) || bp.State != BlueprintState.AwaitingMaterials)
+            {
+                if (inventoryManager != null && inventoryManager.GetItemCount(pop.PersonalInventoryId, task.YieldItemTypeId) > 0)
+                {
+                    AssignHaulTask(ref pop, ref task);
+                }
+                else
                 {
                     task.TaskType = PopTaskType.None;
 
                     pop.ActivityState = PopActivityState.Idle;
                 }
+
+                return;
+            }
+
+            Vector2 popPos = new Vector2(pop.WorldPositionX, pop.WorldPositionY);
+
+            Vector2 targetPos = new Vector2(task.TargetWorldX, task.TargetWorldY);
+
+            if (Vector2.Distance(popPos, targetPos) > interactionDistance)
+            {
+                pop.TargetPositionX = task.TargetWorldX;
+
+                pop.TargetPositionY = task.TargetWorldY;
+
+                pop.ActivityState = PopActivityState.Moving;
+
+                return;
+            }
+
+            if (inventoryManager != null)
+            {
+                uint count = inventoryManager.GetItemCount(pop.PersonalInventoryId, task.YieldItemTypeId);
+
+                if (count > 0)
+                {
+                    uint needed = 0;
+
+                    if (task.YieldItemTypeId == 1 && bp.DeliveredWood < bp.RequiredWood)
+                    {
+                        needed = bp.RequiredWood - bp.DeliveredWood;
+                    }
+                    else if (task.YieldItemTypeId == 2 && bp.DeliveredStone < bp.RequiredStone)
+                    {
+                        needed = bp.RequiredStone - bp.DeliveredStone;
+                    }
+
+                    if (needed > 0)
+                    {
+                        uint toDeliver = Math.Min(count, needed);
+
+                        inventoryManager.ExecuteTransfer(pop.PersonalInventoryId, 0, task.YieldItemTypeId, toDeliver, out uint transferred);
+
+                        if (transferred > 0)
+                        {
+                            constructionManager.DeliverMaterialToBlueprint(task.TargetNodeId, task.YieldItemTypeId, transferred);
+
+                            Debug.Log($"[PopTaskManager] Pop {pop.PopId} delivered {transferred}x item {task.YieldItemTypeId} to blueprint {task.TargetNodeId}.");
+                        }
+                    }
+                }
+
+                if (inventoryManager.GetItemCount(pop.PersonalInventoryId, task.YieldItemTypeId) > 0)
+                {
+                    AssignHaulTask(ref pop, ref task);
+
+                    return;
+                }
+            }
+
+            task.TaskType = PopTaskType.None;
+
+            pop.ActivityState = PopActivityState.Idle;
+        }
+
+
+        private void ExecuteBuildStructureTask(ref PopData pop, ref PopTaskData task)
+        {
+            if (constructionManager == null || !constructionManager.TryGetBlueprint(task.TargetNodeId, out BuildingBlueprintData bp, out _) || bp.State != BlueprintState.UnderConstruction)
+            {
+                task.TaskType = PopTaskType.None;
+
+                pop.ActivityState = PopActivityState.Idle;
+
+                return;
+            }
+
+            Vector2 popPos = new Vector2(pop.WorldPositionX, pop.WorldPositionY);
+
+            Vector2 targetPos = new Vector2(task.TargetWorldX, task.TargetWorldY);
+
+            if (Vector2.Distance(popPos, targetPos) > interactionDistance)
+            {
+                pop.TargetPositionX = task.TargetWorldX;
+
+                pop.TargetPositionY = task.TargetWorldY;
+
+                pop.ActivityState = PopActivityState.Moving;
+
+                return;
+            }
+
+            pop.ActivityState = PopActivityState.Working;
+
+            bool isFinished = constructionManager.ApplyConstructionLabor(task.TargetNodeId, baseWorkSpeedPerTick * 0.4f);
+
+            if (isFinished)
+            {
+                task.TaskType = PopTaskType.None;
+
+                pop.ActivityState = PopActivityState.Idle;
+            }
+        }
+
+
+        private void ExecuteBurialTask(ref PopData pop, ref PopTaskData task)
+        {
+            NativeArray<PopData> pops = populationManager.ActivePops;
+
+            int deadIndex = task.TargetNodeId;
+
+            if (deadIndex < 0 || deadIndex >= pops.Length)
+            {
+                task.TaskType = PopTaskType.None;
+
+                pop.ActivityState = PopActivityState.Idle;
+
+                return;
+            }
+
+            PopData deadPop = pops[deadIndex];
+
+            if (deadPop.IsAlive || deadPop.IsBuried)
+            {
+                task.TaskType = PopTaskType.None;
+
+                pop.ActivityState = PopActivityState.Idle;
+
+                return;
+            }
+
+            Vector2 popPos = new Vector2(pop.WorldPositionX, pop.WorldPositionY);
+
+            Vector2 targetPos = new Vector2(task.TargetWorldX, task.TargetWorldY);
+
+            if (Vector2.Distance(popPos, targetPos) > interactionDistance)
+            {
+                pop.TargetPositionX = task.TargetWorldX;
+
+                pop.TargetPositionY = task.TargetWorldY;
+
+                pop.ActivityState = PopActivityState.Moving;
+
+                return;
+            }
+
+            if (shrineManager != null && shrineManager.TryGetNearestShrine(pop.HomeAnchorId, out AncestralShrineData shrine))
+            {
+                Vector2 shrinePos = new Vector2(shrine.WorldPositionX, shrine.WorldPositionY);
+
+                float distToShrine = Vector2.Distance(popPos, shrinePos);
+
+                if (distToShrine > interactionDistance * 1.5f)
+                {
+                    deadPop.WorldPositionX = pop.WorldPositionX;
+
+                    deadPop.WorldPositionY = pop.WorldPositionY;
+
+                    pops[deadIndex] = deadPop;
+
+                    task.TargetWorldX = shrinePos.x;
+
+                    task.TargetWorldY = shrinePos.y;
+
+                    pop.TargetPositionX = shrinePos.x;
+
+                    pop.TargetPositionY = shrinePos.y;
+
+                    pop.ActivityState = PopActivityState.Moving;
+
+                    return;
+                }
+
+                shrineManager.RecordBurial(pop.HomeAnchorId);
+
+                deadPop.IsBuried = true;
+
+                deadPop.WorldPositionX = 0.0f;
+
+                deadPop.WorldPositionY = 0.0f;
+
+                deadPop.Health = 0;
+
+                pops[deadIndex] = deadPop;
+
+                task.TaskType = PopTaskType.None;
+
+                pop.ActivityState = PopActivityState.Idle;
+
+                Debug.Log($"[PopTaskManager] Pop #{pop.PopId} buried deceased ancestor in Sacred Mound #{shrine.ShrineId}!");
+            }
+            else
+            {
+                deadPop.IsBuried = true;
+
+                deadPop.WorldPositionX = 0.0f;
+
+                deadPop.WorldPositionY = 0.0f;
+
+                pops[deadIndex] = deadPop;
+
+                task.TaskType = PopTaskType.None;
+
+                pop.ActivityState = PopActivityState.Idle;
             }
         }
 
@@ -726,11 +1316,11 @@ namespace ER.World.Population.Tasks
         {
             Vector2 popPos = new Vector2(pop.WorldPositionX, pop.WorldPositionY);
 
-            Vector2 hearthPos = ResolveHearthPosition(pop.HomeAnchorId);
+            Vector2 hearthPos = ResolveHearthPosition(pop.HomeAnchorId, pop.PopId);
 
             float distFromHearth = Vector2.Distance(popPos, hearthPos);
 
-            if (distFromHearth > 115.0f || pop.CurrentCalories < 850.0f || pop.BodyTemperature < 33.8f)
+            if (distFromHearth > 120.0f || pop.CurrentCalories < 850.0f || pop.BodyTemperature < 33.8f)
             {
                 task.TaskType = PopTaskType.None;
 
@@ -875,7 +1465,7 @@ namespace ER.World.Population.Tasks
 
             int targetStorageId = anchor.StorageInventoryId;
 
-            ushort[] resourceTypes = { 1, 2, 3, 4, 5, 6, 7 };
+            ushort[] resourceTypes = { 1, 2, 3, 4, 5, 6, 7, 8 };
 
             bool anyTransferSuccessful = false;
 
@@ -898,25 +1488,42 @@ namespace ER.World.Population.Tasks
 
             if (anyTransferSuccessful || !IsInventoryOverloaded(pop.PersonalInventoryId))
             {
-                if (pop.BodyTemperature < 35.8f)
+                task.TaskType = PopTaskType.None;
+
+                if (pop.BodyTemperature < 34.0f)
                 {
                     pop.ActivityState = PopActivityState.Resting;
                 }
                 else
                 {
-                    task.TaskType = PopTaskType.None;
+                    if (householdManager != null && householdManager.TryGetDwellingPosition(pop.DwellingId, out float2 dPos))
+                    {
+                        float offsetX = UnityEngine.Random.Range(-2.2f, 2.2f);
 
-                    pop.ActivityState = PopActivityState.Idle;
+                        float offsetY = UnityEngine.Random.Range(-2.2f, 2.2f);
+
+                        pop.TargetPositionX = dPos.x + offsetX;
+
+                        pop.TargetPositionY = dPos.y + offsetY;
+
+                        pop.ActivityState = PopActivityState.Moving;
+                    }
+                    else
+                    {
+                        pop.ActivityState = PopActivityState.Idle;
+                    }
                 }
             }
             else
             {
-                pop.ActivityState = PopActivityState.Resting;
+                task.TaskType = PopTaskType.None;
+
+                pop.ActivityState = PopActivityState.Idle;
             }
         }
 
 
-        private Vector2 ResolveHearthPosition(ushort anchorId)
+        private Vector2 ResolveHearthPosition(ushort anchorId, int popId = 0)
         {
             if (polityManager == null || gridManager == null) return Vector2.zero;
 
@@ -928,7 +1535,18 @@ namespace ER.World.Population.Tasks
             {
                 if (anchors[i].AnchorId == anchorId)
                 {
-                    return new Vector2((anchors[i].TileX + 0.5f) * tileSize, (anchors[i].TileY + 0.5f) * tileSize);
+                    float centerX = (anchors[i].TileX + 0.5f) * tileSize;
+
+                    float centerY = (anchors[i].TileY + 0.5f) * tileSize;
+
+                    if (popId > 0)
+                    {
+                        float angle = (popId * 0.785398f);
+
+                        return new Vector2(centerX + Mathf.Cos(angle) * 2.2f, centerY + Mathf.Sin(angle) * 2.2f);
+                    }
+
+                    return new Vector2(centerX, centerY);
                 }
             }
 

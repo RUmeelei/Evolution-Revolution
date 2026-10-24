@@ -22,9 +22,9 @@ MonoBehaviour:
   nominalBodyTemp: 36.6
   baseComfortTemp: 22
   activeWarmingRate: 1.4
-  passiveCoolingRate: 0.0018
+  passiveCoolingRate: 0.008
   workMetabolicHeatBoost: 8.5
-  hearthHeatRadius: 24
+  hearthHeatRadius: 6
   hearthMaxHeatBonus: 54
   hypothermiaThreshold: 33.5
   hypothermiaCriticalTemp: 29

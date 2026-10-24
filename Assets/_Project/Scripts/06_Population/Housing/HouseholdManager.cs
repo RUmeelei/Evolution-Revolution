@@ -16,9 +16,9 @@ namespace ER.World.Housing
         [Header("Starting Housing Setup")]
         [SerializeField] private int startingDwellingsPerCamp = 6;
 
-        [SerializeField] private float minPlacementRadius = 10.0f;
+        [SerializeField] private float minPlacementRadius = 11.0f;
 
-        [SerializeField] private float maxPlacementRadius = 22.0f;
+        [SerializeField] private float maxPlacementRadius = 20.0f;
 
 
         [Header("System References")]
@@ -90,7 +90,10 @@ namespace ER.World.Housing
                 return;
             }
 
-            SpawnStartingSettlementDwellings();
+            if (startingDwellingsPerCamp > 0)
+            {
+                SpawnStartingSettlementDwellings();
+            }
 
             isInitialized = true;
         }
@@ -148,7 +151,7 @@ namespace ER.World.Housing
 
                 for (int i = 0; i < startingDwellingsPerCamp; i++)
                 {
-                    float angle = (i / (float)startingDwellingsPerCamp) * Mathf.PI * 2.0f;
+                    float angle = (i / (float)startingDwellingsPerCamp) * Mathf.PI * 2.0f + 0.25f;
 
                     float dist = UnityEngine.Random.Range(minPlacementRadius, maxPlacementRadius);
 
@@ -183,6 +186,147 @@ namespace ER.World.Housing
         }
 
 
+        public bool TryAssignHomelessToDwelling(int dwellingId, ushort anchorId)
+        {
+            if (!dwellings.IsCreated || dwellingId <= 0)
+            {
+                return false;
+            }
+
+            int dwellingIndex = -1;
+
+            for (int i = 0; i < dwellings.Length; i++)
+            {
+                if (dwellings[i].DwellingId == dwellingId && dwellings[i].IsActive)
+                {
+                    dwellingIndex = i;
+                    break;
+                }
+            }
+
+            if (dwellingIndex < 0)
+            {
+                return false;
+            }
+
+            DwellingData dwelling = dwellings[dwellingIndex];
+
+            if (dwelling.OccupantCount >= dwelling.Capacity)
+            {
+                return false;
+            }
+
+            bool assignedAny = false;
+
+            for (int h = 0; h < households.Length; h++)
+            {
+                HouseholdData hh = households[h];
+
+                if (hh.HomeAnchorId == anchorId && hh.DwellingId <= 0)
+                {
+                    byte neededBeds = (byte)(2 + hh.ChildrenCount);
+
+                    if (dwelling.OccupantCount + neededBeds <= dwelling.Capacity || dwelling.OccupantCount == 0)
+                    {
+                        hh.DwellingId = dwellingId;
+
+                        households[h] = hh;
+
+                        dwelling.OccupantCount = (byte)Mathf.Min(dwelling.Capacity, dwelling.OccupantCount + neededBeds);
+
+                        assignedAny = true;
+
+                        UpdateHouseholdPopsDwelling(hh.HouseholdId, dwellingId, dwelling.WorldPositionX, dwelling.WorldPositionY);
+
+                        Debug.Log($"[HouseholdManager] Household #{hh.HouseholdId} moved into Dwelling #{dwellingId}!");
+
+                        if (dwelling.OccupantCount >= dwelling.Capacity)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (dwelling.OccupantCount < dwelling.Capacity && PopulationManager.Instance != null && PopulationManager.Instance.IsInitialized)
+            {
+                NativeArray<PopData> pops = PopulationManager.Instance.ActivePops;
+
+                int popCount = PopulationManager.Instance.TotalPopulationCount;
+
+                for (int p = 0; p < popCount; p++)
+                {
+                    PopData pop = pops[p];
+
+                    if (pop.IsAlive && pop.HomeAnchorId == anchorId && pop.DwellingId <= 0)
+                    {
+                        pop.DwellingId = dwellingId;
+
+                        float ox = UnityEngine.Random.Range(-1.5f, 1.5f);
+
+                        float oy = UnityEngine.Random.Range(-1.5f, 1.5f);
+
+                        pop.TargetPositionX = dwelling.WorldPositionX + ox;
+
+                        pop.TargetPositionY = dwelling.WorldPositionY + oy;
+
+                        pop.ActivityState = PopActivityState.Moving;
+
+                        pops[p] = pop;
+
+                        dwelling.OccupantCount++;
+
+                        assignedAny = true;
+
+                        if (dwelling.OccupantCount >= dwelling.Capacity)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            dwellings[dwellingIndex] = dwelling;
+
+            return assignedAny;
+        }
+
+
+        private void UpdateHouseholdPopsDwelling(int householdId, int dwellingId, float homeX, float homeY)
+        {
+            if (householdId <= 0 || PopulationManager.Instance == null || !PopulationManager.Instance.IsInitialized)
+            {
+                return;
+            }
+
+            NativeArray<PopData> pops = PopulationManager.Instance.ActivePops;
+
+            int count = PopulationManager.Instance.TotalPopulationCount;
+
+            for (int i = 0; i < count; i++)
+            {
+                PopData p = pops[i];
+
+                if (p.IsAlive && p.HouseholdId == householdId)
+                {
+                    p.DwellingId = dwellingId;
+
+                    float ox = UnityEngine.Random.Range(-1.5f, 1.5f);
+
+                    float oy = UnityEngine.Random.Range(-1.5f, 1.5f);
+
+                    p.TargetPositionX = homeX + ox;
+
+                    p.TargetPositionY = homeY + oy;
+
+                    p.ActivityState = PopActivityState.Moving;
+
+                    pops[i] = p;
+                }
+            }
+        }
+
+
         public int FormHouseholdForCouple(ref PopData male, ref PopData female)
         {
             int assignedDwellingId = FindVacantDwelling(female.HomeAnchorId);
@@ -210,6 +354,21 @@ namespace ER.World.Housing
             if (assignedDwellingId > 0)
             {
                 IncrementDwellingOccupancy(assignedDwellingId, 2);
+
+                if (TryGetDwellingPosition(assignedDwellingId, out float2 pos))
+                {
+                    male.TargetPositionX = pos.x + 0.8f;
+
+                    male.TargetPositionY = pos.y + 0.8f;
+
+                    male.ActivityState = PopActivityState.Moving;
+
+                    female.TargetPositionX = pos.x - 0.8f;
+
+                    female.TargetPositionY = pos.y - 0.8f;
+
+                    female.ActivityState = PopActivityState.Moving;
+                }
             }
 
             return hId;
@@ -311,6 +470,32 @@ namespace ER.World.Housing
             position = float2.zero;
 
             return false;
+        }
+
+
+        public void GetHousingStats(ushort anchorId, out int totalDwellings, out int totalBeds, out int occupiedBeds)
+        {
+            totalDwellings = 0;
+
+            totalBeds = 0;
+
+            occupiedBeds = 0;
+
+            if (!dwellings.IsCreated) return;
+
+            for (int i = 0; i < dwellings.Length; i++)
+            {
+                DwellingData d = dwellings[i];
+
+                if (d.HomeAnchorId == anchorId && d.IsActive)
+                {
+                    totalDwellings++;
+
+                    totalBeds += d.Capacity;
+
+                    occupiedBeds += d.OccupantCount;
+                }
+            }
         }
 
 

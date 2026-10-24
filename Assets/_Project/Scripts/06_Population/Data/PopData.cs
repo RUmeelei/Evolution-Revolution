@@ -38,6 +38,8 @@ namespace ER.World.Population
 
         public bool IsAlive;
 
+        public bool IsBuried;
+
         public ulong BirthTick;
 
         public ushort AgeInDays;
@@ -72,15 +74,15 @@ namespace ER.World.Population
             float worldY,
             ulong currentTick,
             ushort ageDays,
-            Gender gender)
+            Gender gender,
+            PopDemographicsConfig config = null)
         {
-            PopLifeStage stage;
+            PopLifeStage stage = PopLifeStage.Adult;
 
-            if (ageDays < 1080) stage = PopLifeStage.Infant;
-            else if (ageDays < 4320) stage = PopLifeStage.Child;
-            else if (ageDays < 6480) stage = PopLifeStage.Youth;
-            else if (ageDays < 18000) stage = PopLifeStage.Adult;
-            else stage = PopLifeStage.Elder;
+            if (config != null)
+            {
+                stage = config.ResolveLifeStage(ageDays);
+            }
 
             return new PopData
             {
@@ -100,6 +102,7 @@ namespace ER.World.Population
                 LifeStage = stage,
                 Gender = gender,
                 IsAlive = true,
+                IsBuried = false,
                 BirthTick = currentTick,
                 AgeInDays = ageDays,
                 Health = 255,

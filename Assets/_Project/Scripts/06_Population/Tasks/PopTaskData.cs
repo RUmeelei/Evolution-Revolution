@@ -13,7 +13,9 @@ namespace ER.World.Population.Tasks
         HuntAnimal = 5,
         CraftAtStation = 6,
         HaulToConstruction = 7,
-        BuildStructure = 8
+        BuildStructure = 8,
+        BuryCorpse = 9,
+        RestAtDwelling = 10
     }
 
     [Serializable]

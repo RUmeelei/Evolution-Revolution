@@ -239,12 +239,7 @@ namespace ER.World.Inventory
 
         public bool TryAddItem(int inventoryId, ushort itemTypeId, uint quantity, byte quality = 255, byte moisture = 0)
         {
-            if (!isInitialized || itemDatabase == null || quantity == 0)
-            {
-                return false;
-            }
-
-            if (!itemDatabase.TryGetItemConfig(itemTypeId, out ItemTypeConfig config))
+            if (!isInitialized || quantity == 0)
             {
                 return false;
             }
@@ -254,9 +249,38 @@ namespace ER.World.Inventory
                 return false;
             }
 
-            float addedWeight = config.MassPerUnitKg * quantity;
+            float unitMass = 1.0f;
 
-            float addedVolume = config.VolumePerUnitLiters * quantity;
+            float unitVolume = 1.0f;
+
+            uint maxStack = 100;
+
+            if (itemDatabase != null && itemDatabase.TryGetItemConfig(itemTypeId, out ItemTypeConfig config))
+            {
+                unitMass = config.MassPerUnitKg;
+
+                unitVolume = config.VolumePerUnitLiters;
+
+                maxStack = config.MaxStackSize;
+            }
+            else
+            {
+                switch (itemTypeId)
+                {
+                    case 1: unitMass = 2.2f; unitVolume = 3.0f; maxStack = 50; break;
+                    case 2: unitMass = 1.8f; unitVolume = 1.2f; maxStack = 50; break;
+                    case 3: unitMass = 0.08f; unitVolume = 0.1f; maxStack = 200; break;
+                    case 4: unitMass = 0.65f; unitVolume = 0.8f; maxStack = 50; break;
+                    case 5: unitMass = 1.2f; unitVolume = 1.5f; maxStack = 30; break;
+                    case 6: unitMass = 0.8f; unitVolume = 1.2f; maxStack = 30; break;
+                    case 7: unitMass = 1.5f; unitVolume = 3.0f; maxStack = 10; break;
+                    case 8: unitMass = 0.5f; unitVolume = 0.6f; maxStack = 50; break;
+                }
+            }
+
+            float addedWeight = unitMass * quantity;
+
+            float addedVolume = unitVolume * quantity;
 
             if (!header.CanAccommodate(addedWeight, addedVolume))
             {
@@ -273,7 +297,7 @@ namespace ER.World.Inventory
 
                 if (slot.InventoryId == inventoryId && slot.ItemTypeId == itemTypeId && slot.Quality == quality)
                 {
-                    uint spaceInSlot = config.MaxStackSize > slot.Quantity ? config.MaxStackSize - slot.Quantity : 0;
+                    uint spaceInSlot = maxStack > slot.Quantity ? maxStack - slot.Quantity : 0;
 
                     if (spaceInSlot > 0)
                     {
@@ -295,7 +319,7 @@ namespace ER.World.Inventory
 
             while (remainingToAdd > 0)
             {
-                uint stackAmount = Math.Min(remainingToAdd, config.MaxStackSize);
+                uint stackAmount = Math.Min(remainingToAdd, maxStack);
 
                 InventorySlotData newSlot = InventorySlotData.Create(
                     inventoryId,
@@ -322,11 +346,103 @@ namespace ER.World.Inventory
         }
 
 
+        public bool TryRemoveItem(int inventoryId, ushort itemTypeId, uint quantity, out uint removedAmount)
+        {
+            removedAmount = 0;
+
+            if (!isInitialized || quantity == 0)
+            {
+                return false;
+            }
+
+            if (!TryGetHeader(inventoryId, out InventoryHeaderData header))
+            {
+                return false;
+            }
+
+            uint remainingToRemove = quantity;
+
+            for (int i = 0; i < slots.Length; i++)
+            {
+                InventorySlotData slot = slots[i];
+
+                if (slot.InventoryId == inventoryId && slot.ItemTypeId == itemTypeId)
+                {
+                    uint toTake = Math.Min(slot.Quantity, remainingToRemove);
+
+                    slot.Quantity -= toTake;
+
+                    remainingToRemove -= toTake;
+
+                    removedAmount += toTake;
+
+                    if (slot.Quantity == 0)
+                    {
+                        slots.RemoveAtSwapBack(i);
+
+                        header.SlotCount--;
+
+                        i--;
+                    }
+                    else
+                    {
+                        slots[i] = slot;
+                    }
+
+                    if (remainingToRemove == 0)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            if (removedAmount > 0)
+            {
+                float unitMass = 1.0f;
+
+                float unitVol = 1.0f;
+
+                if (itemPropertiesMap.IsCreated && itemPropertiesMap.TryGetValue(itemTypeId, out ItemPhysicalProperties props))
+                {
+                    unitMass = props.MassPerUnitKg;
+
+                    unitVol = props.VolumePerUnitLiters;
+                }
+                else if (itemDatabase != null && itemDatabase.TryGetItemConfig(itemTypeId, out ItemTypeConfig cfg))
+                {
+                    unitMass = cfg.MassPerUnitKg;
+
+                    unitVol = cfg.VolumePerUnitLiters;
+                }
+
+                header.CurrentWeightKg = Mathf.Max(0.0f, header.CurrentWeightKg - (removedAmount * unitMass));
+
+                header.CurrentVolumeLiters = Mathf.Max(0.0f, header.CurrentVolumeLiters - (removedAmount * unitVol));
+
+                TrySetHeader(inventoryId, header);
+
+                return true;
+            }
+
+            return false;
+        }
+
+
         public TransferResultStatus ExecuteTransfer(int sourceId, int targetId, ushort itemTypeId, uint quantity, out uint transferredAmount)
         {
             if (!isInitialized || quantity == 0)
             {
                 transferredAmount = 0;
+
+                return TransferResultStatus.FailedInvalidInventory;
+            }
+
+            if (targetId == 0)
+            {
+                if (TryRemoveItem(sourceId, itemTypeId, quantity, out transferredAmount))
+                {
+                    return TransferResultStatus.Success;
+                }
 
                 return TransferResultStatus.FailedInvalidInventory;
             }

@@ -9,7 +9,8 @@ namespace ER.World.Crafting
         CampHearth = 1,
         TanningRack = 2,
         FlintKnappingStation = 3,
-        CarpentryBench = 4
+        CarpentryBench = 4,
+        DryingRack = 5
     }
 
     [Serializable]

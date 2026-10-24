@@ -16,7 +16,7 @@ MonoBehaviour:
   childMaxDays: 4320
   youthMaxDays: 6480
   adultMaxDays: 18000
-  pregnancyDurationDays: 10
+  pregnancyDurationDays: 270
   postPartumCooldownDays: 180
   conceptionMinCalories: 1600
   conceptionMinBodyTemp: 35

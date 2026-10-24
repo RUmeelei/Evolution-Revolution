@@ -159,7 +159,7 @@ namespace ER.World.Polity
 
             FocusCameraOnPlayerSettlement();
 
-            Debug.Log($"[PolityRegionManager] Successfully established {anchors.Count} settlements safely on continental landmass.");
+            Debug.Log($"[PolityRegionManager] Successfully established {anchors.Count} settlements safely in continental heartland.");
         }
 
 
@@ -250,10 +250,22 @@ namespace ER.World.Polity
         {
             List<GeoRegionData> viable = new List<GeoRegionData>();
 
-            if (regionManager == null || regionManager.Regions == null)
+            if (regionManager == null || regionManager.Regions == null || gridManager == null)
             {
                 return viable;
             }
+
+            WorldMapConfig config = gridManager.MapConfig;
+
+            float minX = config.MapWidth * 0.18f;
+
+            float maxX = config.MapWidth * 0.82f;
+
+            float minY = config.MapHeight * 0.18f;
+
+            float maxY = config.MapHeight * 0.82f;
+
+            Vector2 mapCenter = new Vector2(config.MapWidth * 0.5f, config.MapHeight * 0.5f);
 
             var allRegions = regionManager.Regions;
 
@@ -266,8 +278,23 @@ namespace ER.World.Polity
                     continue;
                 }
 
+                if (reg.CenterTileX < minX || reg.CenterTileX > maxX ||
+                    reg.CenterTileY < minY || reg.CenterTileY > maxY)
+                {
+                    continue;
+                }
+
                 viable.Add(reg);
             }
+
+            viable.Sort((a, b) =>
+            {
+                float distA = Vector2.Distance(new Vector2(a.CenterTileX, a.CenterTileY), mapCenter);
+
+                float distB = Vector2.Distance(new Vector2(b.CenterTileX, b.CenterTileY), mapCenter);
+
+                return distA.CompareTo(distB);
+            });
 
             return viable;
         }
@@ -287,7 +314,7 @@ namespace ER.World.Polity
             {
                 int regionStep = Mathf.Max(1, candidateRegions.Count / totalPolities);
 
-                int startOffset = (polityIndex * regionStep + (polityIndex * 7)) % candidateRegions.Count;
+                int startOffset = (polityIndex * regionStep) % candidateRegions.Count;
 
                 for (int attempt = 0; attempt < candidateRegions.Count; attempt++)
                 {
@@ -327,9 +354,17 @@ namespace ER.World.Polity
 
             var tiles = gridManager.RawTiles;
 
-            int startX = Mathf.Clamp(region.CenterTileX, 15, config.MapWidth - 16);
+            int minBoundX = Mathf.RoundToInt(config.MapWidth * 0.15f);
 
-            int startY = Mathf.Clamp(region.CenterTileY, 15, config.MapHeight - 16);
+            int maxBoundX = Mathf.RoundToInt(config.MapWidth * 0.85f);
+
+            int minBoundY = Mathf.RoundToInt(config.MapHeight * 0.15f);
+
+            int maxBoundY = Mathf.RoundToInt(config.MapHeight * 0.85f);
+
+            int startX = Mathf.Clamp(region.CenterTileX, minBoundX, maxBoundX);
+
+            int startY = Mathf.Clamp(region.CenterTileY, minBoundY, maxBoundY);
 
             Vector2Int bestTile = new Vector2Int(startX, startY);
 
@@ -351,7 +386,7 @@ namespace ER.World.Polity
 
                         int ty = startY + dy;
 
-                        if (!config.IsCoordsValid(tx, ty)) continue;
+                        if (tx < minBoundX || tx > maxBoundX || ty < minBoundY || ty > maxBoundY) continue;
 
                         int idx = config.CoordsToIndex(tx, ty);
 
@@ -460,7 +495,15 @@ namespace ER.World.Polity
 
             float bestScore = float.MinValue;
 
-            for (int step = 15; step < config.MapWidth / 2; step += 18)
+            int minBoundX = Mathf.RoundToInt(config.MapWidth * 0.15f);
+
+            int maxBoundX = Mathf.RoundToInt(config.MapWidth * 0.85f);
+
+            int minBoundY = Mathf.RoundToInt(config.MapHeight * 0.15f);
+
+            int maxBoundY = Mathf.RoundToInt(config.MapHeight * 0.85f);
+
+            for (int step = 10; step < config.MapWidth * 0.35f; step += 15)
             {
                 for (int signY = -1; signY <= 1; signY += 2)
                 {
@@ -470,7 +513,7 @@ namespace ER.World.Polity
 
                         int ty = cy + step * signY;
 
-                        if (!config.IsCoordsValid(tx, ty)) continue;
+                        if (tx < minBoundX || tx > maxBoundX || ty < minBoundY || ty > maxBoundY) continue;
 
                         if (IsTileHabitable(tx, ty, config))
                         {

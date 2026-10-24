@@ -15,6 +15,8 @@ namespace ER.World.Population
 
         [ReadOnly] public NativeArray<float2> HearthPositions;
 
+        public ulong CurrentTick;
+
         public int MapWidth;
 
         public int MapHeight;
@@ -137,30 +139,44 @@ namespace ER.World.Population
 
             bool isSuffering = false;
 
+            ulong popTickOffset = CurrentTick + (ulong)pop.PopId;
+
             if (pop.CurrentCalories <= 0.0f)
             {
-                ApplyDamage(ref pop, StarvationDamage);
+                if (popTickOffset % 15 == 0)
+                {
+                    ApplyDamage(ref pop, StarvationDamage);
+                }
 
                 isSuffering = true;
             }
 
             if (pop.CurrentHydration <= 0.0f)
             {
-                ApplyDamage(ref pop, DehydrationDamage);
+                if (popTickOffset % 15 == 0)
+                {
+                    ApplyDamage(ref pop, DehydrationDamage);
+                }
 
                 isSuffering = true;
             }
 
             if (pop.BodyTemperature < HypothermiaCritTemp)
             {
-                ApplyDamage(ref pop, HypothermiaDamage);
+                if (popTickOffset % 10 == 0)
+                {
+                    ApplyDamage(ref pop, HypothermiaDamage);
+                }
 
                 isSuffering = true;
             }
 
             if (!isSuffering && pop.Health < 255 && pop.CurrentCalories > 1400.0f && pop.CurrentHydration > 40.0f && pop.BodyTemperature > 35.5f)
             {
-                pop.Health = (byte)math.min(255, pop.Health + NaturalHealingRate);
+                if (popTickOffset % 25 == 0)
+                {
+                    pop.Health = (byte)math.min(255, pop.Health + NaturalHealingRate);
+                }
             }
 
             Pops[index] = pop;

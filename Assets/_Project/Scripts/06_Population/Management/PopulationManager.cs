@@ -67,6 +67,8 @@ namespace ER.World.Population
 
         private bool isInitialized = false;
 
+        private int roadUpdateCooldown = 0;
+
 
         public event Action<int> OnPopulationCountChanged;
 
@@ -74,6 +76,23 @@ namespace ER.World.Population
         public bool IsInitialized => isInitialized;
 
         public int TotalPopulationCount => activePopulationCount;
+
+        public int AlivePopulationCount
+        {
+            get
+            {
+                int count = 0;
+
+                NativeArray<PopData> pops = ActivePops;
+
+                for (int i = 0; i < activePopulationCount; i++)
+                {
+                    if (pops[i].IsAlive) count++;
+                }
+
+                return count;
+            }
+        }
 
         public NativeArray<PopData> ActivePops => isBufferATarget ? popsBufferA : popsBufferB;
 
@@ -141,11 +160,19 @@ namespace ER.World.Population
 
             DistributeInitialHousing();
 
-            if (inventoryManager != null && polityManager.Anchors.Count > 0)
+            if (inventoryManager != null)
             {
-                int hearthStorage = polityManager.Anchors[0].StorageInventoryId;
+                for (int a = 0; a < polityManager.Anchors.Count; a++)
+                {
+                    int storageId = polityManager.Anchors[a].StorageInventoryId;
 
-                inventoryManager.TryAddItem(hearthStorage, 3, 350, 255, 10);
+                    if (storageId > 0)
+                    {
+                        inventoryManager.TryAddItem(storageId, 3, 350, 255, 10);
+
+                        inventoryManager.TryAddItem(storageId, 1, 40, 255, 0);
+                    }
+                }
             }
 
             if (clockManager != null)
@@ -252,6 +279,10 @@ namespace ER.World.Population
 
             float tileSize = gridManager.MapConfig.TileWorldSize;
 
+            ushort minDays = demographicsConfig != null ? demographicsConfig.StartingAdultMinAgeDays : (ushort)1280;
+
+            ushort maxDays = demographicsConfig != null ? demographicsConfig.StartingAdultMaxAgeDays : (ushort)2240;
+
             for (int a = 0; a < anchors.Count; a++)
             {
                 PolityAnchorData anchor = anchors[a];
@@ -272,7 +303,7 @@ namespace ER.World.Population
 
                     Gender gender = (i % 2 == 0) ? Gender.Male : Gender.Female;
 
-                    ushort ageDays = (ushort)UnityEngine.Random.Range(6500, 14000);
+                    ushort ageDays = (ushort)UnityEngine.Random.Range(minDays, maxDays);
 
                     SpawnSinglePop(anchor.OwnerPolityId, anchor.AnchorId, popX, popY, ageDays, gender);
                 }
@@ -280,7 +311,7 @@ namespace ER.World.Population
 
             OnPopulationCountChanged?.Invoke(activePopulationCount);
 
-            Debug.Log($"[PopulationManager] Initialized {activePopulationCount} agents centered at settlement hearths.");
+            Debug.Log($"[PopulationManager] Initialized {activePopulationCount} adult agents using {demographicsConfig?.name ?? "Default"} parameters.");
         }
 
 
@@ -365,7 +396,8 @@ namespace ER.World.Population
                 worldY,
                 currentTick,
                 ageDays,
-                gender);
+                gender,
+                demographicsConfig);
 
             float wanderRadius = locomotionConfig != null ? locomotionConfig.WanderRadius : 12.0f;
 
@@ -443,17 +475,16 @@ namespace ER.World.Population
 
             if (metabolismConfig != null)
             {
-                float baseAmbientTemp = ResolveSeasonalBaseTemp(timeData.CurrentSeason);
-
                 PopMetabolismJob metabolismJob = new PopMetabolismJob
                 {
                     Pops = currentWriteBuffer,
                     Tiles = gridManager.RawTiles,
                     HearthPositions = hearthPositions.AsArray(),
+                    CurrentTick = timeData.TotalTicks,
                     MapWidth = config.MapWidth,
                     MapHeight = config.MapHeight,
                     TileWorldSize = config.TileWorldSize,
-                    AmbientBaseTemperature = baseAmbientTemp,
+                    AmbientBaseTemperature = timeData.AmbientTemperature,
                     IdleCalorieBurn = metabolismConfig.IdleCalorieBurn,
                     MovingCalorieBurn = metabolismConfig.MovingCalorieBurn,
                     WorkingCalorieBurn = metabolismConfig.WorkingCalorieBurn,
@@ -511,7 +542,7 @@ namespace ER.World.Population
 
                 if (!t.HasFlag(TileData.FlagHasRoad))
                 {
-                    if (UnityEngine.Random.value < 0.008f)
+                    if (UnityEngine.Random.value < 0.002f)
                     {
                         t.SetFlag(TileData.FlagHasRoad, true);
 
@@ -522,8 +553,12 @@ namespace ER.World.Population
                 }
             }
 
-            if (roadsChanged && polityManager != null)
+            roadUpdateCooldown++;
+
+            if (roadsChanged && roadUpdateCooldown >= 300 && polityManager != null)
             {
+                roadUpdateCooldown = 0;
+
                 polityManager.RefreshVisuals();
             }
         }
@@ -566,6 +601,10 @@ namespace ER.World.Population
         {
             int currentCount = activePopulationCount;
 
+            ushort pregnancyLimit = demographicsConfig != null ? demographicsConfig.PregnancyDurationDays : (ushort)48;
+
+            ushort postPartumLimit = demographicsConfig != null ? demographicsConfig.PostPartumCooldownDays : (ushort)16;
+
             for (int i = 0; i < currentCount; i++)
             {
                 PopData mother = pops[i];
@@ -575,13 +614,13 @@ namespace ER.World.Population
                     continue;
                 }
 
-                if (mother.PregnancyDays >= demographicsConfig.PregnancyDurationDays)
+                if (mother.PregnancyDays >= pregnancyLimit)
                 {
                     mother.IsPregnant = false;
 
                     mother.PregnancyDays = 0;
 
-                    mother.MatingCooldownDays = demographicsConfig.PostPartumCooldownDays;
+                    mother.MatingCooldownDays = postPartumLimit;
 
                     pops[i] = mother;
 
@@ -608,7 +647,7 @@ namespace ER.World.Population
                         updatedPops[i] = mother;
                     }
 
-                    Debug.Log($"[PopulationManager] Baby born in Household {mother.HouseholdId} (Polity {mother.PolityId})! Total pop: {activePopulationCount}");
+                    Debug.Log($"[PopulationManager] Baby born in Household {mother.HouseholdId} (Polity {mother.PolityId})! Total alive pop: {AlivePopulationCount}");
                 }
             }
         }
@@ -617,6 +656,14 @@ namespace ER.World.Population
         private void ProcessClanMatrimonyAndConception(NativeArray<PopData> pops)
         {
             int count = activePopulationCount;
+
+            float minHealth = demographicsConfig != null ? demographicsConfig.ConceptionMinHealth : 180.0f;
+
+            float minCal = demographicsConfig != null ? demographicsConfig.ConceptionMinCalories : 1200.0f;
+
+            float minTemp = demographicsConfig != null ? demographicsConfig.ConceptionMinBodyTemp : 35.5f;
+
+            float prob = demographicsConfig != null ? demographicsConfig.DailyConceptionProbability : 0.04f;
 
             for (int i = 0; i < count; i++)
             {
@@ -632,9 +679,7 @@ namespace ER.World.Population
                     continue;
                 }
 
-                if (female.Health < demographicsConfig.ConceptionMinHealth ||
-                    female.CurrentCalories < demographicsConfig.ConceptionMinCalories ||
-                    female.BodyTemperature < demographicsConfig.ConceptionMinBodyTemp)
+                if (female.Health < minHealth || female.CurrentCalories < minCal || female.BodyTemperature < minTemp)
                 {
                     continue;
                 }
@@ -661,7 +706,7 @@ namespace ER.World.Population
                     }
                 }
 
-                if (hasPartnerNearby && UnityEngine.Random.value < demographicsConfig.DailyConceptionProbability)
+                if (hasPartnerNearby && UnityEngine.Random.value < prob)
                 {
                     female.IsPregnant = true;
 
@@ -688,19 +733,6 @@ namespace ER.World.Population
         }
 
 
-        private float ResolveSeasonalBaseTemp(Season season)
-        {
-            switch (season)
-            {
-                case Season.Spring: return 12.0f;
-                case Season.Summer: return 24.0f;
-                case Season.Autumn: return 7.0f;
-                case Season.Winter: return -8.0f;
-                default: return 15.0f;
-            }
-        }
-
-
         private void ProcessSustenanceAndFeeding(NativeArray<PopData> pops)
         {
             if (inventoryManager == null || polityManager == null)
@@ -709,7 +741,7 @@ namespace ER.World.Population
             }
 
             for (int i = 0; i < activePopulationCount; i++)
-                {
+            {
                 PopData pop = pops[i];
 
                 if (!pop.IsAlive)
@@ -719,19 +751,27 @@ namespace ER.World.Population
 
                 if (pop.CurrentCalories < (metabolismConfig != null ? metabolismConfig.HungerThreshold : 1000.0f))
                 {
-                    if (inventoryManager.GetItemCount(pop.PersonalInventoryId, 4) > 0)
-                    {
-                        inventoryManager.ExecuteTransfer(pop.PersonalInventoryId, 0, 4, 1, out _);
-
-                        pop.CurrentCalories = math.min(pop.MaxCalories, pop.CurrentCalories + 650.0f);
-
-                        pops[i] = pop;
-                    }
-                    else if (inventoryManager.GetItemCount(pop.PersonalInventoryId, 3) > 0)
+                    if (inventoryManager.GetItemCount(pop.PersonalInventoryId, 3) > 0)
                     {
                         inventoryManager.ExecuteTransfer(pop.PersonalInventoryId, 0, 3, 1, out _);
 
                         pop.CurrentCalories = math.min(pop.MaxCalories, pop.CurrentCalories + 450.0f);
+
+                        pops[i] = pop;
+                    }
+                    else if (inventoryManager.GetItemCount(pop.PersonalInventoryId, 8) > 0)
+                    {
+                        inventoryManager.ExecuteTransfer(pop.PersonalInventoryId, 0, 8, 1, out _);
+
+                        pop.CurrentCalories = math.min(pop.MaxCalories, pop.CurrentCalories + 550.0f);
+
+                        pops[i] = pop;
+                    }
+                    else if (inventoryManager.GetItemCount(pop.PersonalInventoryId, 4) > 0)
+                    {
+                        inventoryManager.ExecuteTransfer(pop.PersonalInventoryId, 0, 4, 1, out _);
+
+                        pop.CurrentCalories = math.min(pop.MaxCalories, pop.CurrentCalories + 650.0f);
 
                         pops[i] = pop;
                     }
@@ -743,19 +783,27 @@ namespace ER.World.Population
 
                         if (distToHearth <= (metabolismConfig != null ? metabolismConfig.HearthHeatRadius : 24.0f))
                         {
-                            if (inventoryManager.GetItemCount(anchor.StorageInventoryId, 4) > 0)
-                            {
-                                inventoryManager.ExecuteTransfer(anchor.StorageInventoryId, 0, 4, 1, out _);
-
-                                pop.CurrentCalories = math.min(pop.MaxCalories, pop.CurrentCalories + 650.0f);
-
-                                pops[i] = pop;
-                            }
-                            else if (inventoryManager.GetItemCount(anchor.StorageInventoryId, 3) > 0)
+                            if (inventoryManager.GetItemCount(anchor.StorageInventoryId, 3) > 0)
                             {
                                 inventoryManager.ExecuteTransfer(anchor.StorageInventoryId, 0, 3, 1, out _);
 
                                 pop.CurrentCalories = math.min(pop.MaxCalories, pop.CurrentCalories + 450.0f);
+
+                                pops[i] = pop;
+                            }
+                            else if (inventoryManager.GetItemCount(anchor.StorageInventoryId, 8) > 0)
+                            {
+                                inventoryManager.ExecuteTransfer(anchor.StorageInventoryId, 0, 8, 1, out _);
+
+                                pop.CurrentCalories = math.min(pop.MaxCalories, pop.CurrentCalories + 550.0f);
+
+                                pops[i] = pop;
+                            }
+                            else if (inventoryManager.GetItemCount(anchor.StorageInventoryId, 4) > 0)
+                            {
+                                inventoryManager.ExecuteTransfer(anchor.StorageInventoryId, 0, 4, 1, out _);
+
+                                pop.CurrentCalories = math.min(pop.MaxCalories, pop.CurrentCalories + 650.0f);
 
                                 pops[i] = pop;
                             }
@@ -817,6 +865,8 @@ namespace ER.World.Population
 
                     Vector2 centerPos;
 
+                    float wanderDist = 2.5f;
+
                     if (householdManager != null && householdManager.TryGetDwellingPosition(pop.DwellingId, out float2 dPos))
                     {
                         centerPos = new Vector2(dPos.x, dPos.y);
@@ -824,9 +874,11 @@ namespace ER.World.Population
                     else
                     {
                         centerPos = ResolveAnchorPosition(pop.HomeAnchorId, tileSize);
+
+                        wanderDist = locomotionConfig.WanderRadius * 0.45f;
                     }
 
-                    Vector2 wanderTarget = centerPos + UnityEngine.Random.insideUnitCircle * (locomotionConfig.WanderRadius * 0.75f);
+                    Vector2 wanderTarget = centerPos + UnityEngine.Random.insideUnitCircle * wanderDist;
 
                     pop.TargetPositionX = wanderTarget.x;
 
@@ -876,16 +928,21 @@ namespace ER.World.Population
             {
                 PopData pop = active[i];
 
-                Vector3 pos = new Vector3(pop.WorldPositionX, pop.WorldPositionY, -3.0f);
-
                 if (!pop.IsAlive)
                 {
-                    Gizmos.color = new Color(0.2f, 0.2f, 0.2f, 0.9f);
+                    if (!pop.IsBuried && pop.WorldPositionX != 0.0f && pop.WorldPositionY != 0.0f)
+                    {
+                        Vector3 corpsePos = new Vector3(pop.WorldPositionX, pop.WorldPositionY, -3.0f);
 
-                    Gizmos.DrawCube(pos, new Vector3(1.2f, 0.5f, 0.5f));
+                        Gizmos.color = new Color(0.2f, 0.2f, 0.2f, 0.9f);
+
+                        Gizmos.DrawCube(corpsePos, new Vector3(1.2f, 0.5f, 0.5f));
+                    }
 
                     continue;
                 }
+
+                Vector3 pos = new Vector3(pop.WorldPositionX, pop.WorldPositionY, -3.0f);
 
                 if (showVitalsGizmoColor)
                 {

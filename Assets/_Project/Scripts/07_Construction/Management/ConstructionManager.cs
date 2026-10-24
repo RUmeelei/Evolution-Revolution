@@ -232,7 +232,7 @@ namespace ER.World.Construction
                 case BuildingType.DugoutShelter:
                     if (householdManager != null && householdManager.IsInitialized)
                     {
-                        householdManager.RegisterDwelling(
+                        int dwellingId = householdManager.RegisterDwelling(
                             bp.PolityId,
                             bp.HomeAnchorId,
                             DwellingType.DugoutShelter,
@@ -240,6 +240,8 @@ namespace ER.World.Construction
                             bp.WorldPositionY,
                             capacity: 5,
                             thermalBonus: 18.0f);
+
+                        householdManager.TryAssignHomelessToDwelling(dwellingId, bp.HomeAnchorId);
 
                         if (Population.PopulationManager.Instance != null)
                         {
@@ -255,6 +257,18 @@ namespace ER.World.Construction
                         {
                             inventoryManager.CreateInventory(15000.0f, 25000.0f, 80);
                         }
+                    }
+                    break;
+
+                case BuildingType.DryingRack:
+                    if (Crafting.CraftingManager.Instance != null && Crafting.CraftingManager.Instance.IsInitialized)
+                    {
+                        Crafting.CraftingManager.Instance.RegisterStation(
+                            bp.PolityId,
+                            bp.HomeAnchorId,
+                            Crafting.CraftingStationType.DryingRack,
+                            bp.WorldPositionX,
+                            bp.WorldPositionY);
                     }
                     break;
             }

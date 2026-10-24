@@ -14,29 +14,69 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ER.World.Inventory.ItemDatabaseConfig
   itemTypes:
   - itemTypeId: 1
-    localizationKey: item.wood
-    massPerUnitKg: 2
+    localizationKey: item_wood
+    massPerUnitKg: 2.2
     volumePerUnitLiters: 3
     maxStackSize: 50
     shelfLifeTicks: 0
-    moistureAbsorbRate: 0.02
-    baseFlammability: 150
+    moistureAbsorbRate: 0.35
+    baseFlammability: 80
   - itemTypeId: 2
-    localizationKey: item.stone
-    massPerUnitKg: 3.5
-    volumePerUnitLiters: 1.5
-    maxStackSize: 40
+    localizationKey: item_flint
+    massPerUnitKg: 1.8
+    volumePerUnitLiters: 1.2
+    maxStackSize: 50
     shelfLifeTicks: 0
-    moistureAbsorbRate: 0
+    moistureAbsorbRate: 0.05
     baseFlammability: 0
   - itemTypeId: 3
-    localizationKey: item.grain
-    massPerUnitKg: 0.5
-    volumePerUnitLiters: 0.8
+    localizationKey: item.berries
+    massPerUnitKg: 0.08
+    volumePerUnitLiters: 0.1
     maxStackSize: 200
-    shelfLifeTicks: 2880
+    shelfLifeTicks: 2400
+    moistureAbsorbRate: 0.4
+    baseFlammability: 10
+  - itemTypeId: 4
+    localizationKey: item_raw_meat
+    massPerUnitKg: 0.65
+    volumePerUnitLiters: 0.8
+    maxStackSize: 50
+    shelfLifeTicks: 2400
+    moistureAbsorbRate: 0.25
+    baseFlammability: 15
+  - itemTypeId: 5
+    localizationKey: item_raw_hide
+    massPerUnitKg: 1.2
+    volumePerUnitLiters: 1.5
+    maxStackSize: 30
+    shelfLifeTicks: 4800
+    moistureAbsorbRate: 0.45
+    baseFlammability: 20
+  - itemTypeId: 6
+    localizationKey: item_cured_fur
+    massPerUnitKg: 0.8
+    volumePerUnitLiters: 1.2
+    maxStackSize: 30
+    shelfLifeTicks: 0
+    moistureAbsorbRate: 0.15
+    baseFlammability: 40
+  - itemTypeId: 7
+    localizationKey: item_fur_parka
+    massPerUnitKg: 1.5
+    volumePerUnitLiters: 3
+    maxStackSize: 10
+    shelfLifeTicks: 0
+    moistureAbsorbRate: 0.2
+    baseFlammability: 50
+  - itemTypeId: 8
+    localizationKey: item_smoked_meat
+    massPerUnitKg: 0.5
+    volumePerUnitLiters: 0.6
+    maxStackSize: 50
+    shelfLifeTicks: 0
     moistureAbsorbRate: 0.1
-    baseFlammability: 80
+    baseFlammability: 25
   - itemTypeId: 101
     localizationKey: item.cartridge
     massPerUnitKg: 0.025

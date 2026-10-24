@@ -78,13 +78,13 @@ namespace ER.World.Construction
             {
                 case BuildingType.DugoutShelter:
                     wood = 6;
-                    stone = 2;
-                    labor = 35.0f;
+                    stone = 0;
+                    labor = 30.0f;
                     break;
 
                 case BuildingType.Storehouse:
                     wood = 12;
-                    stone = 6;
+                    stone = 4;
                     labor = 60.0f;
                     break;
 
@@ -96,7 +96,7 @@ namespace ER.World.Construction
 
                 case BuildingType.DryingRack:
                     wood = 4;
-                    stone = 1;
+                    stone = 0;
                     labor = 20.0f;
                     break;
             }
