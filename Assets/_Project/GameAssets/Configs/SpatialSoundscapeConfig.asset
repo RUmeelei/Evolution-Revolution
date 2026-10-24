@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ffaddc68fde98274689d457922be4a4a, type: 3}
+  m_Name: SpatialSoundscapeConfig
+  m_EditorClassIdentifier: Assembly-CSharp::ER.World.Audio.SpatialSoundscapeConfig
+  plainsVariations:
+  - {fileID: 8300000, guid: 51141a314116a964999f2b7653a77bca, type: 3}
+  forestVariations:
+  - {fileID: 8300000, guid: 74309d21afcc35c4686c5131834e3b04, type: 3}
+  waterVariations:
+  - {fileID: 8300000, guid: a062267b662f8b04a8b4d192be46674a, type: 3}
+  windVariations:
+  - {fileID: 8300000, guid: c3afffce2c76797409419384c63133fb, type: 3}
+  winterWindVariations:
+  - {fileID: 8300000, guid: c3b3b21e1928fc445b2db59056a0269e, type: 3}
+  masterAmbienceVolume: 0.8
+  maxBiomeVolume: 0.7
+  maxWindVolume: 0.9
+  volumeFadeSpeed: 1.8
+  sampleRadiusInTiles: 12
+  strategicAltitudeThreshold: 3500

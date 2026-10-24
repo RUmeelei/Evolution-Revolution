@@ -1,0 +1,54 @@
+{
+    "languageCode": "ru_RU",
+    "languageDisplayName": "Русский",
+    "entries": [
+        {
+            "key": "season.spring",
+            "value": "Весна"
+        },
+        {
+            "key": "season.summer",
+            "value": "Лето"
+        },
+        {
+            "key": "season.autumn",
+            "value": "Осень"
+        },
+        {
+            "key": "season.winter",
+            "value": "Зима"
+        },
+        {
+            "key": "terrain.plains",
+            "value": "Равнины"
+        },
+        {
+            "key": "terrain.hills",
+            "value": "Холмы"
+        },
+        {
+            "key": "terrain.mountains",
+            "value": "Горы"
+        },
+        {
+            "key": "terrain.water_shallow",
+            "value": "Мелководье / Река"
+        },
+        {
+            "key": "terrain.water_deep",
+            "value": "Глубокие Воды"
+        },
+        {
+            "key": "terrain.swamp",
+            "value": "Болото"
+        },
+        {
+            "key": "ui.date_format",
+            "value": "Год {0}, {1}, День {2:00}, {3:00}:00"
+        },
+        {
+            "key": "ui.pause",
+            "value": "ПАУЗА"
+        }
+    ]
+}

@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c24b90b20a299743bb489052ec2399c, type: 3}
+  m_Name: PopDemographicsConfig
+  m_EditorClassIdentifier: Assembly-CSharp::ER.World.Population.PopDemographicsConfig
+  infantMaxDays: 1080
+  childMaxDays: 4320
+  youthMaxDays: 6480
+  adultMaxDays: 18000
+  pregnancyDurationDays: 10
+  postPartumCooldownDays: 180
+  conceptionMinCalories: 1600
+  conceptionMinBodyTemp: 35
+  conceptionMinHealth: 180
+  dailyConceptionProbability: 0.05
+  elderBaseMortalityAgeDays: 18000
+  baseSenescenceDailyChance: 0.0008
+  senescenceAgeCurveMultiplier: 0.00025

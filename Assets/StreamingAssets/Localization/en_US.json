@@ -1,0 +1,54 @@
+{
+    "languageCode": "en_US",
+    "languageDisplayName": "English",
+    "entries": [
+        {
+            "key": "season.spring",
+            "value": "Spring"
+        },
+        {
+            "key": "season.summer",
+            "value": "Summer"
+        },
+        {
+            "key": "season.autumn",
+            "value": "Autumn"
+        },
+        {
+            "key": "season.winter",
+            "value": "Winter"
+        },
+        {
+            "key": "terrain.plains",
+            "value": "Plains"
+        },
+        {
+            "key": "terrain.hills",
+            "value": "Hills"
+        },
+        {
+            "key": "terrain.mountains",
+            "value": "Mountains"
+        },
+        {
+            "key": "terrain.water_shallow",
+            "value": "Shallow Water"
+        },
+        {
+            "key": "terrain.water_deep",
+            "value": "Deep Ocean"
+        },
+        {
+            "key": "terrain.swamp",
+            "value": "Swamp"
+        },
+        {
+            "key": "ui.date_format",
+            "value": "Year {0}, {1}, Day {2:00}, {3:00}:00"
+        },
+        {
+            "key": "ui.pause",
+            "value": "PAUSED"
+        }
+    ]
+}

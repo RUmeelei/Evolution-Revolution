@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fb40e9268502d544e929c7c8aadb7444, type: 3}
+  m_Name: OnyxThemeConfig
+  m_EditorClassIdentifier: Assembly-CSharp::ER.Core.UI.OnyxThemeConfig
+  surfaceAbsoluteBlack: {r: 0.039, g: 0.047, b: 0.063, a: 0.95}
+  surfaceDarkSlate: {r: 0.067, g: 0.078, b: 0.094, a: 0.9}
+  surfacePanelBorder: {r: 0.102, g: 0.122, b: 0.149, a: 1}
+  textPrimaryColdWhite: {r: 0.91, g: 0.929, b: 0.949, a: 1}
+  textSecondarySteel: {r: 0.69, g: 0.769, b: 0.871, a: 1}
+  textMutedDark: {r: 0.45, g: 0.5, b: 0.58, a: 1}
+  accentAzurePrimary: {r: 0.29, g: 0.565, b: 0.851, a: 1}
+  accentTealVibrant: {r: 0.251, g: 0.878, b: 0.816, a: 1}
+  accentWarningAmber: {r: 0.88, g: 0.58, b: 0.2, a: 1}
+  accentAlertCrimson: {r: 0.85, g: 0.25, b: 0.25, a: 1}

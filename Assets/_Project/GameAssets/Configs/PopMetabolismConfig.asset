@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5a91a6b8e1b5de43b5fce8bbc437d96, type: 3}
+  m_Name: PopMetabolismConfig
+  m_EditorClassIdentifier: Assembly-CSharp::ER.World.Population.PopMetabolismConfig
+  idleCalorieBurn: 0.04
+  movingCalorieBurn: 0.08
+  workingCalorieBurn: 0.16
+  hungerThreshold: 1000
+  shiveringCalorieCost: 0.06
+  baseHydrationDecay: 0.02
+  workHydrationMultiplier: 1.6
+  nominalBodyTemp: 36.6
+  baseComfortTemp: 22
+  activeWarmingRate: 1.4
+  passiveCoolingRate: 0.0018
+  workMetabolicHeatBoost: 8.5
+  hearthHeatRadius: 24
+  hearthMaxHeatBonus: 54
+  hypothermiaThreshold: 33.5
+  hypothermiaCriticalTemp: 29
+  starvationDamage: 1
+  dehydrationDamage: 2
+  hypothermiaDamage: 2
+  naturalHealingRate: 1
